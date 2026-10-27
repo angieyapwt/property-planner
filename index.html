@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#142b30">
+  <meta name="description" content="A private property planning workspace by Angie Yap. Calculate HDB and condo moves, save estimates on your device, and export PDF reports.">
+  <title>Property Studio | Angie Yap</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23142b30'/%3E%3Cpath d='M14 33L32 17l18 16M20 29v20h24V29M29 49V36h6v13' fill='none' stroke='%23c9ac77' stroke-width='3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css?v=1">
+  <script src="model.js?v=1" defer></script><script src="pdf.js?v=1" defer></script><script src="app.js?v=1" defer></script>
+</head>
+<body>
+  <a class="skip" href="#workspace">Skip to calculator</a>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Property Studio home"><span class="brand-mark">AY</span><span>ANGIE YAP<small>PROPERTY STUDIO</small></span></a>
+    <nav aria-label="Workspace"><span class="private-label"><i></i> Saved on your device</span><button class="button subtle" id="openSaved">Saved estimates <span id="savedCount">0</span></button></nav>
+  </header>
+  <main>
+    <section class="intro">
+      <div><span class="eyebrow">THE NEXT CHAPTER, CONSIDERED.</span><h1>A clearer view of<br>your next <em>home.</em></h1><p>Your sale. Your purchase. Every number, in one place.</p></div>
+      <div class="intro-note"><span class="line-art" aria-hidden="true">⌂</span><span>Thoughtful planning.<br>Confident decisions.</span></div>
+    </section>
+    <section class="scenario-bar" aria-label="Choose your property scenario">
+      <div class="scenario-field"><label class="eyebrow" for="scenario">01 / YOUR SCENARIO</label><select id="scenario"></select></div>
+      <p id="scenarioDescription"></p><span class="scenario-arrow" aria-hidden="true">↗</span>
+    </section>
+    <div class="workspace" id="workspace">
+      <div class="input-column">
+        <section class="case-heading"><div><label for="estimateName">ESTIMATE NAME</label><input id="estimateName" maxlength="80" placeholder="e.g. Our next home" autocomplete="off"></div><button id="reset" class="text-button">Start fresh ↺</button></section>
+        <form id="calculator" novalidate><div id="fields"></div></form>
+        <section class="notes-card"><label class="eyebrow" for="notes">YOUR PLANNING NOTES</label><textarea id="notes" rows="3" maxlength="4000" placeholder="Property details, assumptions, or anything to revisit…"></textarea></section>
+        <div class="draft-line"><span id="draftStatus" role="status">Draft autosaves on this device.</span><span>SGD · Estimate only</span></div>
+      </div>
+      <aside class="summary" aria-label="Calculation summary">
+        <div class="summary-top"><span class="eyebrow">02 / THE BIG PICTURE</span><span class="live-pill">LIVE ESTIMATE</span></div>
+        <p id="primaryLabel">Additional cash needed</p><div id="primary" class="primary">$0</div><p class="result-caption" id="resultCaption">Enter your figures to start planning.</p>
+        <div class="summary-metrics" id="metrics"></div>
+        <div class="allocation" id="allocation"></div>
+        <div class="summary-actions"><button class="button gold" id="saveEstimate">Save estimate <span>↗</span></button><button class="button outline" id="exportPdf">Export PDF <span>↓</span></button></div>
+        <p class="device-note">Private by design. Your figures stay in this browser.<br>PDFs and backups are downloaded to your device.</p>
+      </aside>
+    </div>
+    <section class="breakdown-section"><div class="section-title"><div><span class="eyebrow">03 / EVERY DETAIL</span><h2>The numbers, unpacked.</h2></div><button class="text-button" id="toggleDetails" aria-expanded="true" aria-controls="breakdown">Hide breakdown −</button></div><div id="breakdown" class="breakdown-grid"></div><p class="explain">Downpayment, COV and loan top-up rows are guides within the purchase requirement, not extra charges to add again.</p></section>
+    <section class="assumptions"><span class="eyebrow">A NOTE ON YOUR ESTIMATE</span><p>Loan estimates use a maximum of 75% of the lower purchase price or valuation. Actual eligibility may be lower. Cash-over-valuation is cash only. Bank loans include a 5% cash downpayment guide. Stamp duties use the higher price or market value. Commission rates include 9% GST unless you enter a total yourself.</p><p>Confirm loan approval, CPF limits, grants, duties and timing before committing. Saved estimates stay in this browser and may be lost if browser data is cleared; download a backup to keep a separate copy.</p></section>
+  </main>
+  <footer><a class="brand footer-brand" href="./"><span class="brand-mark">AY</span><span>ANGIE YAP<small>PROPERTY STUDIO</small></span></a><p>A little clarity for your next move.</p><span>CEA Reg No. R067805D</span></footer>
+  <dialog id="savedDialog" aria-labelledby="savedTitle"><div class="dialog-header"><div><span class="eyebrow">YOUR PRIVATE COLLECTION</span><h2 id="savedTitle">Saved estimates</h2></div><button class="icon-button" id="closeSaved" aria-label="Close saved estimates">×</button></div><p class="dialog-intro">Keep different plans, return to the details, and compare your next steps.</p><div id="savedList"></div><div class="backup-actions"><button class="button dark" id="backup">Download backup</button><label class="button light" for="importBackup">Restore backup</label><input type="file" id="importBackup" accept="application/json,.json" hidden></div><p class="small muted">Backups contain your saved estimates and current draft. Keep the file somewhere private.</p></dialog>
+  <dialog id="resetDialog" aria-labelledby="resetTitle"><h2 id="resetTitle">Start a new estimate?</h2><p>This clears the current draft. Your named saved estimates will remain available.</p><div class="backup-actions"><button class="button light" id="cancelReset">Keep working</button><button class="button dark" id="confirmReset">Start fresh</button></div></dialog>
+  <dialog id="deleteDialog" aria-labelledby="deleteTitle"><h2 id="deleteTitle">Remove this saved estimate?</h2><p>Download a backup first if you may want it later.</p><div class="backup-actions"><button class="button light" id="cancelDelete">Keep estimate</button><button class="button dark" id="confirmDelete">Remove estimate</button></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
