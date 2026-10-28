@@ -10,6 +10,7 @@
   const boolKeys=['saleCommissionOn','buyCommissionOn','saleCommissionGst','buyCommissionGst','buyLoanAuto'];
   const knownKeys=[...numericKeys,...boolKeys,'loanType'];
   let cases=[],drafts={},current,savingAvailable=true,deleteId=null,toastTimer;
+  const assessmentSeeded=new Set();
   const sharedSession={buy:{},sell:{},cash:{}};
   const defaultInputs=scenario=>{const c=scenarios[scenario];return {saleLegal:c.sell==='condo'?3000:2500,saleMisc:1000,saleRate:2,saleCommissionOn:true,saleCommissionGst:true,buyLegal:c.buy==='condo'?3000:2500,buyMisc:1000,buyRate:1,buyCommissionOn:true,buyCommissionGst:true,buyLoanAuto:true,loanType:c.buy==='hdb'?'HDB loan':'Bank loan',absdRate:0};};
   const blank=scenario=>({scenario,name:'',notes:'',inputs:defaultInputs(scenario)});
@@ -134,7 +135,7 @@
       renderFields();
     }else{
       if(!knownKeys.includes(key))return;
-      current.inputs[key]=input.type==='checkbox'?input.checked:input.value;
+      current.inputs[key]=input.type==='checkbox'?input.checked:input.value;if(key==='buyLoan'||key==='buyPrice')assessmentSeeded.delete(current.scenario);
       if(key==='buyLoan')current.inputs.buyLoanAuto=!has(input.value);
       if(key==='loanType')renderFields();
       else if(key==='buyPrice'||key==='buyLoan')syncAutoLoan();
@@ -145,7 +146,7 @@
   $('calculator').addEventListener('change',event=>{if(event.target.tagName==='SELECT')handleField(event);});
   $('calculator').addEventListener('click',event=>{if(event.target.dataset.resetCommission){current.inputs[event.target.dataset.resetCommission+'Override']='';syncCommissionFields();rememberShared(current);renderSummary();persist();}if(event.target.id==='autoLoan'){current.inputs.buyLoanAuto=true;syncAutoLoan();rememberShared(current);renderSummary();persist();}});
   $('calculator').addEventListener('focusout',e=>{const key=e.target.dataset.key;if(!numericKeys.includes(key)||e.target.type==='number')return;e.target.value=has(current.inputs[key])?n(current.inputs[key]).toLocaleString('en-SG',{maximumFractionDigits:2}):'';syncCommissionFields();});
-  $('estimateName').addEventListener('input',e=>{current.name=e.target.value;persist();});$('notes').addEventListener('input',e=>{current.notes=e.target.value;persist();});
+  $('estimateName').addEventListener('input',e=>{const old=current.name;current.name=e.target.value;window.EstateAffordability?.shareName(current.name,old);persist();});$('notes').addEventListener('input',e=>{current.notes=e.target.value;persist();});
   $('saveEstimate').addEventListener('click',saveEstimate);$('exportPdf').addEventListener('click',exportPdf);
   $('openSaved').addEventListener('click',()=>{renderSaved();$('savedDialog').showModal();});$('closeSaved').addEventListener('click',()=>$('savedDialog').close());
   $('reset').addEventListener('click',()=>$('resetDialog').showModal());$('cancelReset').addEventListener('click',()=>$('resetDialog').close());$('confirmReset').addEventListener('click',()=>{current=blank(current.scenario);render();persist();$('resetDialog').close();toast('A fresh estimate is ready.');});
@@ -155,8 +156,10 @@
   $('importBackup').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>2000000)throw Error('File too large');const data=JSON.parse(await file.text());if(data.version!==1||!Array.isArray(data.cases))throw Error('Invalid backup');const incoming=data.cases.slice(0,500).map(r=>({...cleanRecord(r),id:String(r.id||crypto.randomUUID()),savedAt:isNaN(Date.parse(r.savedAt))?new Date().toISOString():r.savedAt}));const draft=data.current?cleanRecord(data.current):null;const previousCases=cases,previousCurrent=current;const ids=new Set(cases.map(r=>r.id));cases=[...incoming.filter(r=>!ids.has(r.id)),...cases].slice(0,500);if(draft){drafts[current.scenario]=structuredClone(current);current=draft;}if(!persist()){cases=previousCases;current=previousCurrent;throw Error('Storage unavailable');}if(data.affordability)window.EstateAffordability?.setState(data.affordability);if(data.others)window.EstateOthers?.setState(data.others);render();renderSaved();toast('Backup restored. Existing saved estimates were kept.');}catch{toast('Could not restore this backup. Choose a Estate Basics JSON backup and check browser storage.');}e.target.value='';});
   window.EstatePlannerBridge={
     getReportData:reportData,getReportName:()=>current.name,
-    getInputs(type){const config=scenarios[current.scenario];if(config.buy===type)return {...current.inputs};const values=sharedSession.buy[type];if(values)return {...values};for(const record of Object.values(drafts))if(scenarios[record.scenario]?.buy===type)return {...record.inputs};return {};},
-    applyLoan(type,price,valuation,loan){const scenario=type==='hdb'?'buy-hdb':'buy-condo';switchScenario(scenario);if(has(price))current.inputs.buyPrice=price;if(has(valuation))current.inputs.buyValuation=valuation;current.inputs.loanType='Bank loan';current.inputs.buyLoan=loan;current.inputs.buyLoanAuto=false;render();rememberShared(current);persist();document.dispatchEvent(new CustomEvent('estate:show-tab',{detail:'planner'}));toast('Assessed loan copied to the Property Planner.');},
+    shareName(name,previous){if(!current.name||current.name===previous){current.name=String(name).slice(0,80);$('estimateName').value=current.name;persist();}},
+    seedAssessment({type,loan,price,name}){if(!current.name&&name){current.name=name;$('estimateName').value=name;}if(scenarios[current.scenario].buy===type&&!has(current.inputs.buyPrice)&&!has(current.inputs.buyLoan)){current.inputs.buyPrice=price;current.inputs.buyValuation=price;current.inputs.buyLoan=loan;current.inputs.buyLoanAuto=false;current.inputs.loanType='Bank loan';assessmentSeeded.add(current.scenario);render();rememberShared(current);}persist();},
+    getInputs(type){const config=scenarios[current.scenario];if(config.buy===type)return {...current.inputs,_assessmentSeeded:assessmentSeeded.has(current.scenario)};const values=sharedSession.buy[type];if(values)return {...values};for(const record of Object.values(drafts))if(scenarios[record.scenario]?.buy===type)return {...record.inputs};return {};},
+    applyLoan(type,price,valuation,loan){const scenario=type==='hdb'?'buy-hdb':'buy-condo';if(scenarios[current.scenario].buy!==type)switchScenario(scenario);if(!has(current.inputs.buyPrice)&&has(price)){current.inputs.buyPrice=price;if(has(valuation))current.inputs.buyValuation=valuation;}current.inputs.loanType='Bank loan';current.inputs.buyLoan=loan;current.inputs.buyLoanAuto=false;render();rememberShared(current);persist();document.dispatchEvent(new CustomEvent('estate:show-tab',{detail:'planner'}));toast('Assessed loan copied to the Property Planner.');},
     getName(){return current.name||scenarios[current.scenario].label;}
   };
   render();if(!savingAvailable)$('draftStatus').textContent='Browser storage unavailable. Download a backup to keep your figures.';

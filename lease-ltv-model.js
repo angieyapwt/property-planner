@@ -20,7 +20,8 @@
     let ratio=null,status='incomplete';
     if(!errors.length){if(remaining<=20){ratio=0;status='short-lease';}else if(coverage>=95){ratio=1;status='full';}else if(denominator>0){ratio=Math.max(0,Math.min(1,numerator/denominator));status='pro-rated';}else errors.push('The formula denominator is not positive. Check the age and remaining lease.');}
     const prorated=ratio===null?null:ratio*base,loan=prorated===null||!has(state.price)?null:price*prorated/100;
-    return {state,year,built,lease,base,price,date,age,remaining,coverage,denominator,numerator,ratio,prorated,loan,status,errors,valid:!errors.length};
+    const fullLoan=has(state.price)?price*base/100:null,loanDifference=loan===null?null:Math.max(fullLoan-loan,0);
+    return {fullLoan,loanDifference,state,year,built,lease,base,price,date,age,remaining,coverage,denominator,numerator,ratio,prorated,loan,status,errors,valid:!errors.length};
   }
   const api={defaults,cleanState,referenceDate,calculate};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.LeaseLtvModel=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

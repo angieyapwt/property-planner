@@ -17,3 +17,7 @@
 
 #exportCombinedPlanner{grid-column:1/-1;width:100%}
 @media(min-width:1051px){#plannerView .summary{max-height:calc(100dvh - 48px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#6f91bd #18345b}}
+
+.aff-workspace .comparison-table thead th{white-space:normal;line-height:1.6}.aff-actions label.button{cursor:pointer}.aff-actions input[hidden]{display:none}
+
+#affordabilityView .comparison-table thead th{white-space:normal;line-height:1.5}@media(max-width:560px){#affordabilityView .comparison-table th,#affordabilityView .comparison-table td{font-size:10px;padding:12px 6px}#affordabilityView .comparison-table small{font-size:9px}#affordabilityView .comparison-table caption{font-size:10px}}
