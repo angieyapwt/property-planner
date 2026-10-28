@@ -1,0 +1,29 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const M=require('./affordability-model.js'),P=require('./pdf.js');let checks=0;
+function eq(a,b){assert.equal(a,b);checks++;}function near(a,b,t=.02){assert.ok(Math.abs(a-b)<t,`${a} != ${b}`);checks++;}
+eq(M.ageFromDob('1990-10-29','2026-10-28'),35);eq(M.ageFromDob('1990-10-29','2026-10-29'),36);eq(M.ageFromDob('2030-01-01','2026-10-28'),null);eq(M.ageFromDob('2000-02-31','2026-10-28'),null);
+const a=(age,income,extra={})=>({...M.applicant(),age:String(age),ageAuto:false,income:String(income),...extra});
+let cpf=M.cpfOa(a(30,5000),'2026-10-28');near(cpf.amount,1150.14);eq(cpf.contribution,1850);
+near(M.cpfOa(a(57,6000),'2026-10-28').amount,720.12);near(M.cpfOa(a(57,6000,{frsMet:true}),'2026-10-28').amount,1410.05);
+eq(M.cpfOa(a(30,12000),'2026-10-28').amount,M.cpfOa(a(30,8000),'2026-10-28').amount);
+eq(M.cpfOa(a(30,50),'2026-10-28').amount,0);eq(M.cpfOa(a(30,500),'2026-10-28').contribution,85);
+eq(M.cpfOa(a(30,5000,{cpfProfile:'none'}),'2026-10-28').amount,0);eq(M.cpfOa(a(30,5000,{oaAuto:false,oa:'123.45'}),'2026-10-28').amount,123.45);
+const born={...a(35,5000),dob:'1991-10-28',ageAuto:true};near(M.cpfOa(born,'2026-10-28').amount,1150.14);assert.ok(M.cpfOa(born,'2026-11-01').amount<1100);checks++;
+let state=M.defaults();state.applicants=[a(30,7000),a(50,3000)];state.settings.asOfAuto=false;state.settings.asOf='2026-10-28';
+let r=M.assess(state);near(r.age,36);near(r.income,10000);eq(r.outcomes.hdb.standard.months,300);eq(r.outcomes.hdb.extended.months,360);eq(r.outcomes.condo.standard.months,348);eq(r.outcomes.condo.extended.months,420);eq(r.outcomes.hdb.standard.ltv,.75);eq(r.outcomes.hdb.extended.ltv,.55);eq(r.outcomes.hdb.standard.binding,'MSR');eq(r.outcomes.condo.standard.binding,'TDSR');
+state.settings.ecType='resale';r=M.assess(state);eq(r.outcomes.ec.msr,false);state.settings.ecType='new';eq(M.assess(state).outcomes.ec.msr,true);
+state.applicants[0].car='1000';state.applicants[0].housing='200';r=M.assess(state);near(r.tdsrHeadroom,4300);near(r.msrHeadroom,2800);
+state.settings.selection='1';r=M.assess(state);eq(r.age,50);eq(r.income,3000);eq(r.outcomes.hdb.standard.months,180);eq(r.outcomes.hdb.extended.months,300);
+state.settings.selection='all';state.settings.existingLoans='1';r=M.assess(state);eq(r.outcomes.hdb.standard.ltv,.45);eq(r.outcomes.hdb.extended.ltv,.25);state.settings.existingLoans='2';r=M.assess(state);eq(r.outcomes.hdb.standard.ltv,.35);eq(r.outcomes.hdb.extended.ltv,.15);
+state=M.defaults();state.applicants=[a(35,20000)];state.targets.hdb={price:'600000',valuation:'550000'};r=M.assess(state);eq(r.option.maxLoan,412500);eq(r.option.minCash,77500);eq(r.option.equity,187500);
+state.settings.stressRate='2';eq(M.assess(state).stress,4);state.settings.thereafterRate='5';eq(M.assess(state).stress,5);state.settings.actualRate='6';eq(M.assess(state).stress,6);
+state.applicants=[a(35,4000,{incomeType:'variable',annual:'24000',annualType:'variable'})];r=M.assess(state);eq(r.gross,6000);eq(r.income,4200);state.applicants[0].annualType='fixed';eq(M.assess(state).income,4800);
+state.applicants=[a(75,10000)];r=M.assess(state);eq(r.option.valid,false);eq(r.outcomes.hdb.extended.months,0);
+state.applicants=[a(35,3000,{car:'3000'})];r=M.assess(state);eq(r.option.maxLoan,0);eq(r.tdsrHeadroom,0);
+for(const rate of [0,1,4,10])for(const months of [12,120,300,420])near(M.presentValue(M.payment(500000,rate,months),rate,months),500000);
+for(let i=1;i<=150;i++){const principal=i*7654.32,rate=i%11,months=12+(i%35)*12,s=M.amortize(principal,rate,months);near(s.principalTotal,principal);eq(s.rows.at(-1).balance,0);near(s.totalPaid,s.principalTotal+s.interestTotal);assert.ok(s.rows.every(row=>row.principal>=0&&row.interest>=0&&row.balance>=0));checks++;}
+eq(P.filename('Test Name',new Date('2026-10-28T10:00:00Z')),'Property Planner - Test Name - 28Oct26');eq(P.filename('Test Name',new Date('2026-10-28T17:00:00Z')),'Property Planner - Test Name - 29Oct26');assert.ok(!P.filename('A/B:C').includes('/'));checks++;
+state=M.defaults();state.applicants=[a(35,6000),a(32,5000)];state.settings.actualRate='3';r=M.assess(state);
+const money=v=>new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD',maximumFractionDigits:2}).format(v);
+fs.writeFileSync(__dirname+'/affordability-sample.pdf',P.reportPdf({name:'Test household',scenario:'HDB bank-loan affordability',date:'28 Oct 2026',primaryLabel:'Maximum assessed loan',primary:money(r.option.maxLoan),inputs:[{label:'Applicants',value:'1 + 2'},{label:'Age',value:r.age.toFixed(2)},{label:'Assessment rate',value:r.stress+'%'}],groups:[{title:'Borrowing position',rows:[{label:'Gross assessable income',amount:money(r.gross)},{label:'Bank-recognised income',amount:money(r.income)},{label:'TDSR headroom',amount:money(r.tdsrHeadroom)},{label:'MSR headroom',amount:money(r.msrHeadroom)},{label:'Standard loan / '+r.option.months/12+' years / 75% LTV',amount:money(r.option.maxLoan),bold:true},{label:'Extended loan / '+r.property.extended.months/12+' years / 55% LTV',amount:money(r.property.extended.maxLoan),bold:true}]},{title:'Illustrative repayment',rows:[{label:'Monthly instalment at 3%',amount:money(r.schedule.payment),bold:true},{label:'First-month principal',amount:money(r.schedule.rows[0].principal)},{label:'First-month interest',amount:money(r.schedule.rows[0].interest)},{label:'Total interest',amount:money(r.schedule.interestTotal)},{label:'Monthly cash gap after OA',amount:money(r.cashMonthly)}]}],notes:'Synthetic test data only.',assumptions:['Bank-loan planning estimate. TDSR 55%; applicable MSR 30%; qualifying rate uses at least 4%.','Figures use current income and 2026 CPF ordinary-wage contributions. CPF usage limits and lender approval still apply.']}));
+console.log(checks+' affordability / filename assertions passed; sample report generated.');

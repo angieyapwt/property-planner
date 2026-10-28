@@ -8,7 +8,12 @@
     for(let word of words){while(word.length>width){if(line){lines.push(line);line='';}lines.push(word.slice(0,width));word=word.slice(width);}if((line+' '+word).trim().length>width){lines.push(line);line=word;}else line=(line+' '+word).trim();}
     if(line)lines.push(line);return lines.length?lines:[''];
   }
-  function reportPdf({name,scenario,date,inputs,groups,notes,primaryLabel,primary}){
+  function reportFilename(name,date=new Date()){
+    const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Singapore',day:'2-digit',month:'short',year:'2-digit'}).formatToParts(date),part=type=>parts.find(p=>p.type===type).value;
+    const safe=String(name||'Untitled').replace(/[\\/:*?"<>|\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,80)||'Untitled';
+    return 'Property Planner - '+safe+' - '+part('day')+part('month')+part('year');
+  }
+  function reportPdf({name,scenario,date,inputs,groups,notes,primaryLabel,primary,assumptions}){
     const navy='0.075 0.15 0.28',blue='0.20 0.35 0.57',muted='0.40 0.48 0.60',red='0.73 0.18 0.25',pale='0.93 0.96 0.995',ink='0.12 0.20 0.32';
     const pages=[];let ops=[],y=0,pageNumber=0;
     const rect=(x,b,w,h,color)=>ops.push(color+' rg '+x+' '+b+' '+w+' '+h+' re f');
@@ -51,14 +56,14 @@
     for(const r of inputs){const lines=wrap(r.label+': '+r.value,85);ensure(lines.length*16+5);lines.forEach(l=>line(l,9,false,muted));}
     if(notes){section('Planning notes');for(const paragraph of notes.split(/\r?\n/))wrap(paragraph,89).forEach(l=>line(l,9.5));}
     ensure(310);section('Assumptions & calculation notes');
-    for(const p of [
+    for(const p of (assumptions||[
       'Automatic loan amount starts at 75% of purchase price. The loan used is capped at 75% of the lower price or valuation. A lower edited approval reduces financing.',
       'Cash-over-valuation and the bank minimum cash downpayment cannot use CPF or grants. Actual loan and CPF eligibility may be lower than these estimates.',
       'Downpayment, COV and loan top-up rows are explanatory guides already within the purchase requirement. Do not add them again.',
       'Commission may include 9% GST or exclude GST, according to the selected option. An edited commission total replaces the percentage calculation.',
       'Stamp duties use the higher price or market value. Confirm grants, CPF limits, duties, financing and payment timing before committing.',
       'Generated on your device. Your saved figures are held in your browser; keep a separate backup if needed.'
-    ]){wrap(p,94).forEach(l=>line(l,8.3,false,muted));y-=3;}
+    ])){wrap(p,94).forEach(l=>line(l,8.3,false,muted));y-=3;}
     pages.push(ops.join('\n'));
     const objects=['<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>','<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>'];
     const kids=[];
@@ -73,5 +78,5 @@
     const xref=pdf.length;pdf+='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';for(const o of offsets.slice(1))pdf+=String(o).padStart(10,'0')+' 00000 n \n';pdf+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
     return new TextEncoder().encode(pdf);
   }
-  if(typeof module!=='undefined'&&module.exports)module.exports={reportPdf,wrap};else root.PropertyPdf={reportPdf};
+  if(typeof module!=='undefined'&&module.exports)module.exports={reportPdf,wrap,filename:reportFilename};else root.PropertyPdf={reportPdf,filename:reportFilename};
 })(typeof globalThis!=='undefined'?globalThis:this);
