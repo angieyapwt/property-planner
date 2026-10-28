@@ -45,6 +45,22 @@ Commission amount fields show the rate-calculated total by default; typing a tot
 
 Both PDF downloads use `Property Planner - Name - DDMMMYY.pdf`, with the date in Singapore time (e.g. `Property Planner - Test Name - 28Oct26.pdf`).
 
+## Others: pro-rated LTV
+
+The Others tab implements the requested formula:
+
+`((remaining lease - 20) / (95 - youngest buyer age - 20)) * current LTV limit`
+
+Remaining lease is estimated as `original lease term - (current year - built year)`, floored at zero. The original lease defaults to 99 years and is editable. Built year is treated as an estimated lease-start year; it can differ from actual lease commencement. Use the actual lease commencement year when known.
+
+Current year starts from the current Singapore year and can be overridden. DOB is optional. DOB age uses the actual birthday, evaluated at today's month/day in the selected year. Typing an age overrides DOB; changing DOB or clicking Use DOB age restores automatic calculation.
+
+The starting LTV defaults to 75% and is editable. If remaining lease plus youngest age reaches 95, the starting LTV applies without reduction. Remaining lease of 20 years or less gives 0% under this formula. The applied LTV is bounded between zero and the starting limit. Loan estimate equals property price times the unrounded applied LTV.
+
+This is a formula-based planning tool, not a bank/HDB approval or a CPF withdrawal-limit calculation. The HDB lease-based loan context and CPF lease-usage guidance are linked in the tab. Actual financing also depends on valuation, age, tenure, income and eligibility.
+
+Values autosave locally, are retained when changing tabs, and are included in saved-estimate snapshots and JSON backups. A button can copy the HDB purchase price from Property Planner.
+
 ### Sources checked 28 October 2026
 
 - [MAS macroprudential settings](https://www.mas.gov.sg/publications/macroprudential-policies-in-singapore)
@@ -84,8 +100,10 @@ Breakdown formatting is shared by the site and PDF. Only the requested purchase 
 - `affordability-model.js`: testable bank-loan, CPF and amortisation functions.
 - `affordability.js`, `affordability.css`: assessment tab, local persistence and PDF export.
 - `test-affordability.cjs`: age, CPF, bank limits, repayment, amortisation and filename checks.
+- `lease-ltv-model.js`, `others.js`, `others.css`: the Others tab and its pure lease/LTV engine.
+- `test-lease-ltv.cjs`: formula, coverage boundaries, DOB, overrides and short-lease checks.
 
-Run `node test.cjs`, `node test-enhancements.cjs` and `node test-affordability.cjs` to execute the calculation checks. No dependency installation or build is needed. Serve the folder with a static web server to preview; for example `python -m http.server 8000`.
+Run `node test.cjs`, `node test-enhancements.cjs`, `node test-affordability.cjs` and `node test-lease-ltv.cjs` to execute the calculation checks. No dependency installation or build is needed. Serve the folder with a static web server to preview; for example `python -m http.server 8000`.
 
 ## GitHub Pages
 

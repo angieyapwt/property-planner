@@ -1,0 +1,23 @@
+const assert=require('node:assert/strict'),M=require('./lease-ltv-model.js');let checks=0;
+const base={builtYear:'1992',leaseTerm:'99',currentYear:'2026',currentYearAuto:false,age:'25',ageAuto:false,ltv:'75',price:'550000'};
+const eq=(a,b)=>{assert.equal(a,b);checks++;};const near=(a,b)=>{assert.ok(Math.abs(a-b)<.00001,`${a} != ${b}`);checks++;};
+let r=M.calculate(base,'2026-10-28');eq(r.remaining,65);eq(r.age,25);near(r.prorated,67.5);near(r.loan,371250);eq(r.status,'pro-rated');
+r=M.calculate({...base,age:'30'},'2026-10-28');eq(r.coverage,95);eq(r.prorated,75);eq(r.status,'full');
+r=M.calculate({...base,age:'50'},'2026-10-28');eq(r.prorated,75);eq(r.loan,412500);
+r=M.calculate({...base,ltv:'55'},'2026-10-28');near(r.prorated,49.5);near(r.loan,272250);
+r=M.calculate({...base,builtYear:'1947'},'2026-10-28');eq(r.remaining,20);eq(r.prorated,0);eq(r.loan,0);
+r=M.calculate({...base,builtYear:'1900'},'2026-10-28');eq(r.remaining,0);eq(r.prorated,0);
+r=M.calculate({...base,builtYear:'2027'},'2026-10-28');eq(r.valid,false);eq(r.loan,null);
+r=M.calculate({...base,age:'75'},'2026-10-28');eq(r.prorated,75);eq(Number.isFinite(r.loan),true);
+r=M.calculate({...base,age:'80'},'2026-10-28');eq(r.prorated,75);
+r=M.calculate({...base,dob:'1990-10-29',ageAuto:true},'2026-10-28');eq(r.age,35);
+r=M.calculate({...base,dob:'1990-10-29',ageAuto:true},'2026-10-29');eq(r.age,36);
+r=M.calculate({...base,dob:'1990-10-29',age:'40',ageAuto:false},'2026-10-28');eq(r.age,40);
+r=M.calculate({...base,dob:'2030-01-01',ageAuto:true},'2026-10-28');eq(r.valid,false);eq(r.loan,null);
+r=M.calculate({...base,price:''},'2026-10-28');near(r.prorated,67.5);eq(r.loan,null);
+r=M.calculate({...base,ltv:'0'},'2026-10-28');eq(r.prorated,0);eq(r.loan,0);
+r=M.calculate({...base,ltv:'101'},'2026-10-28');eq(r.valid,false);
+eq(M.referenceDate(2027,'2024-02-29'),'2027-02-28');
+r=M.calculate({...base,leaseTerm:'60',builtYear:'2000'},'2026-10-28');eq(r.remaining,34);near(r.prorated,21);
+for(let age=0;age<=100;age+=5)for(const lease of [1,19,20,21,30,50,70,99]){r=M.calculate({...base,age:String(age),builtYear:String(2026-(99-lease))},'2026-10-28');eq(r.valid,true);assert.ok(r.prorated>=0&&r.prorated<=75);checks++;eq(Number.isFinite(r.loan),true);if(lease>20&&age+lease>=95)eq(r.prorated,75);}
+console.log(checks+' lease / pro-rated LTV assertions passed.');
