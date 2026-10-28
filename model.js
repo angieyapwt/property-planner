@@ -20,8 +20,8 @@
     }
     return Math.floor(total);
   }
-  function commission(price, rate, on, override) {
-    return on === false ? 0 : has(override) ? n(override) : n(price)*n(rate)/100*1.09;
+  function commission(price, rate, on, override, withGst = true) {
+    return on === false ? 0 : has(override) ? n(override) : n(price)*n(rate)/100*(withGst ? 1.09 : 1);
   }
   const row=(label,value,kind='')=>({label,value,kind});
   function calculate(scenario, d={}) {
@@ -31,22 +31,24 @@
       const price=n(d.salePrice), loan=n(d.saleLoan), cpf=n(d.saleCpf),
         hip=config.sell==='hdb'?n(d.saleHip):0, levy=config.sell==='hdb'?n(d.saleLevy):0,
         ssd=config.sell==='condo'?n(d.saleSsd):0, penalty=n(d.salePenalty),
-        legal=n(d.saleLegal), misc=n(d.saleMisc), fee=commission(price,d.saleRate,d.saleCommissionOn,d.saleOverride);
+        legal=n(d.saleLegal), misc=n(d.saleMisc), fee=commission(price,d.saleRate,d.saleCommissionOn,d.saleOverride,d.saleCommissionGst!==false);
       const proceeds=price-loan-cpf-hip-levy-ssd-penalty-legal-misc-fee;
       sale={price,proceeds,rows:[row('Selling price',price),row('Outstanding loan',-loan),row('CPF refund with accrued interest',-cpf),
         ...(config.sell==='hdb'?[row('Outstanding HIP',-hip),row('Resale levy',-levy)]:[row('Seller stamp duty',-ssd)]),
-        row('Bank penalty',-penalty),row('Legal fee',-legal),row('Miscellaneous fee',-misc),row('Commission including GST',-fee),row('Estimated sale proceeds',proceeds,'total')]};
+        row('Bank penalty',-penalty),row('Legal fee',-legal),row('Miscellaneous fee',-misc),row(d.saleCommissionGst===false?'Agent commission (without GST)':'Commission including GST',-fee),row('Estimated sale proceeds',proceeds,'total')]};
     }
     if(config.buy) {
       const isHdb=config.buy==='hdb', price=n(d.buyPrice), valuation=has(d.buyValuation)?n(d.buyValuation):price;
       const basis=Math.min(price,valuation), stampBasis=Math.max(price,valuation);
       const loanType=d.loanType==='No loan'?'No loan':isHdb&&d.loanType==='HDB loan'?'HDB loan':'Bank loan';
-      const maxLoan=loanType==='No loan'?0:basis*.75, loan=Math.min(n(d.buyLoan),maxLoan);
+      const maxLoan=loanType==='No loan'?0:basis*.75;
+      const requestedLoan=d.buyLoanAuto===true || !has(d.buyLoan) ? price*.75 : n(d.buyLoan);
+      const loan=Math.min(requestedLoan,maxLoan);
       const paydownApplicable=isHdb && !!sale && loanType==='HDB loan';
       const paydown=paydownApplicable?Math.min(has(d.buyPaydown)?n(d.buyPaydown):Math.max(sale.proceeds,0)*.5,loan):0;
       const loanUsed=loan-paydown, cov=Math.max(price-valuation,0), cashDown=loanType==='Bank loan'?basis*.05:0;
       const bsd=stampDuty(stampBasis),absd=stampBasis*n(d.absdRate)/100,legal=n(d.buyLegal),misc=n(d.buyMisc);
-      const fee=commission(price,d.buyRate,d.buyCommissionOn,d.buyOverride);
+      const fee=commission(price,d.buyRate,d.buyCommissionOn,d.buyOverride,d.buyCommissionGst!==false);
       const requirement=price-loanUsed+bsd+absd+legal+misc+fee;
       const cashOnly=cov+cashDown+misc+fee;
       const cpfEligible=Math.max(requirement-cashOnly,0);
@@ -62,7 +64,7 @@
           ...(paydownApplicable?[row('Second HDB loan proceeds paydown',paydown),row('Net loan after paydown',-loanUsed,'guide')]:[]),
           row('Cash top up for Loan',loanGap,'guide'),...(maxLoan>loan?[row('Additional approved-loan shortfall',maxLoan-loan,'guide')]:[]),
           row('Stamp duty basis',stampBasis,'guide'),row('Buyer stamp duty',bsd),row('ABSD ('+n(d.absdRate)+'%)',absd),row('Legal fee',legal),
-          row('Miscellaneous fee (cash only)',misc),row('Commission including GST (cash only)',fee),row('Purchase requirement before CPF / grants',requirement,'subtotal'),
+          row('Miscellaneous fee (cash only)',misc),row(d.buyCommissionGst===false?'Agent commission (without GST, cash only)':'Commission including GST (cash only)',fee),row('Purchase requirement before CPF / grants',requirement,'subtotal'),
           row('Housing grants used',-grantUsed),row('CPF OA used',-cpfUsed),row('Cash needed before sale proceeds / savings',cashNeeded,'total')]};
     }
     const savings=buy?n(d.cashSavings):0,proceeds=sale?sale.proceeds:0;
@@ -73,6 +75,17 @@
     if(sale)groups.push({title:'Sale breakdown',rows:sale.rows});
     if(buy)groups.push({title:'Purchase breakdown',rows:buy.rows});
     if(buy)groups.push({title:'Your cash position',rows:[row('Cash needed for purchase',buy.cashNeeded),...(sale?[row('Sale proceeds available',-proceeds)]:[]),row('Cash savings allocated',-savings),row('Additional cash top-up',topUp,'total'),row('Cash remaining after purchase',buffer,'subtotal')]});
+    for(const group of groups) {
+      for(const r of group.rows) {
+        if(group.title==='Sale breakdown') {
+          r.bold=r.label==='Selling price';
+          r.red=['Outstanding HIP','Resale levy','Bank penalty'].includes(r.label);
+        } else if(group.title==='Purchase breakdown') {
+          r.bold=['Purchase price','20% downpayment by cash / CPF','5% cash downpayment','Maximum loan at 75% of lower price / valuation','Buyer stamp duty','Purchase requirement before CPF / grants','Net loan after paydown'].includes(r.label)||r.label.startsWith('ABSD (');
+          r.red=['Cash top up for Loan','Second HDB loan proceeds paydown'].includes(r.label)||(r.label==='Valuation / market value'&&buy.valuation<buy.price);
+        } else r.bold=r.kind==='total';
+      }
+    }
     return {scenario,config,sale,buy,savings,topUp,buffer,primary,primaryLabel:buy?'Additional cash needed':'Estimated sale proceeds',groups,
       hasFigures:!!((sale&&sale.price)||(buy&&buy.price))};
   }
