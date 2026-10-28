@@ -13,7 +13,8 @@
     const safe=String(name||'Untitled').replace(/[\\/:*?"<>|\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,80)||'Untitled';
     return 'Property Planner - '+safe+' - '+part('day')+part('month')+part('year');
   }
-  function reportPdf({name,scenario,date,inputs,groups,notes,primaryLabel,primary,assumptions}){
+  function reportPdf(options){
+    const {name,date}=options,documents=options.documents?.length?options.documents:[options],combined=documents.length>1;
     const navy='0.075 0.15 0.28',blue='0.20 0.35 0.57',muted='0.40 0.48 0.60',red='0.73 0.18 0.25',pale='0.93 0.96 0.995',ink='0.12 0.20 0.32';
     const pages=[];let ops=[],y=0,pageNumber=0;
     const rect=(x,b,w,h,color)=>ops.push(color+' rg '+x+' '+b+' '+w+' '+h+' re f');
@@ -22,7 +23,7 @@
       pageNumber++;ops=[];
       rect(0,748,595,94,navy);rect(39,774,34,34,'0.18 0.30 0.49');text('EB',46,785,16,'F3','0.83 0.90 1');
       text('ESTATE BASICS',86,798,14,'F2','1 1 1');text('PROPERTY PLANNING  /  PRIVATE REPORT',86,782,7.4,'F1','0.68 0.79 0.94');
-      text('YOUR NEXT CHAPTER, CONSIDERED.',39,730,8,'F1',muted);
+      if(combined){text(ascii(name).slice(0,45),39,730,8,'F1',muted);text(date,370,730,8,'F1',muted);}else text('YOUR NEXT CHAPTER, CONSIDERED.',39,730,8,'F1',muted);
       y=705;
     }
     function nextPage(){pages.push(ops.join('\n'));startPage();}
@@ -32,6 +33,24 @@
       ensure(64);y-=12;rect(39,y-9,517,29,pale);text(title+(continued?' / continued':''),51,y,12,'F2',blue);y-=30;
     }
     startPage();
+    if(combined){
+      y=675;line('YOUR COMPLETE PROPERTY PLAN',10,true,blue);y-=16;
+      wrap(name,32).forEach(l=>{text(l,39,y,30,'F3',navy);y-=39;});
+      y-=14;line('Property Planner + Affordability Assessment',13,false,blue);
+      line('Prepared '+date,9,false,muted);y-=34;
+      for(const [index,doc]of documents.entries()){
+        section(String(index+1).padStart(2,'0')+' / '+doc.title);
+        wrap(doc.scenario,68).forEach(l=>line(l,10,false,muted));
+        ensure(86);rect(39,y-64,517,76,navy);
+        text(doc.primaryLabel.toUpperCase(),54,y-8,8,'F2','0.73 0.84 1');
+        text(doc.primary,54,y-43,27,'F3','1 1 1');y-=92;
+      }
+      y-=12;wrap('Two perspectives, one private report. Your transaction calculation and borrowing assessment are shown as separate sections, using the current figures in each workspace.',88).forEach(l=>line(l,10,false,muted));
+      y-=18;wrap('Financing estimates depend on the assumptions in each section. Differences in loan amount or property price are retained for comparison.',88).forEach(l=>line(l,9,false,muted));
+    }
+    for(const [index,doc]of documents.entries()){
+    if(combined){nextPage();line(String(index+1).padStart(2,'0')+' / '+doc.title.toUpperCase(),10,true,blue);y-=14;}
+    const {scenario,inputs=[],groups=[],notes,primaryLabel,primary,assumptions}=doc;
     wrap(name,38).forEach(l=>{ensure(34);text(l,39,y,25,'F3',navy);y-=32;});
     line(scenario,11,false,blue);line('Prepared '+date,8,false,muted);y-=8;
     ensure(90);rect(39,y-67,517,78,navy);text(primaryLabel.toUpperCase(),54,y-9,8,'F2','0.73 0.84 1');text(primary,54,y-45,28,'F3','1 1 1');text('SGD  /  ESTIMATE ONLY',406,y-46,7.5,'F1','0.73 0.84 1');y-=94;
@@ -64,6 +83,7 @@
       'Stamp duties use the higher price or market value. Confirm grants, CPF limits, duties, financing and payment timing before committing.',
       'Generated on your device. Your saved figures are held in your browser; keep a separate backup if needed.'
     ])){wrap(p,94).forEach(l=>line(l,8.3,false,muted));y-=3;}
+    }
     pages.push(ops.join('\n'));
     const objects=['<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>','<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>'];
     const kids=[];
@@ -78,5 +98,10 @@
     const xref=pdf.length;pdf+='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';for(const o of offsets.slice(1))pdf+=String(o).padStart(10,'0')+' 00000 n \n';pdf+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
     return new TextEncoder().encode(pdf);
   }
-  if(typeof module!=='undefined'&&module.exports)module.exports={reportPdf,wrap,filename:reportFilename};else root.PropertyPdf={reportPdf,filename:reportFilename};
+  function combinedReport({name,date,planner,assessment}){
+    if(!planner||!assessment)throw new Error('Both calculations are required.');
+    return reportPdf({name,date,documents:[{...planner,title:'Property Planner'},{...assessment,title:'Affordability Assessment'}]});
+  }
+  const api={reportPdf,combinedReport,wrap,filename:reportFilename};
+  if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PropertyPdf=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),P=require('./pdf');
+let checks=0;const ok=value=>{assert.ok(value);checks++;};
+const planner={name:'Old planner name',date:'OLD DATE 1',scenario:'Sell HDB to Buy HDB',primaryLabel:'Additional cash needed',primary:'$80,000',inputs:[{label:'Purchase price',value:'$600,000'}],notes:'Planner notes retained.',groups:[{title:'Purchase breakdown',rows:Array.from({length:24},(_,i)=>({label:'Purchase row '+(i+1),amount:'$1,234',bold:i===0,red:i===2}))}]};
+const assessment={name:'Old assessment name',date:'OLD DATE 2',scenario:'Affordability Assessment / HDB',primaryLabel:'Maximum assessed loan / selected option',primary:'$450,000',inputs:[{label:'Applicant 1 / DOB',value:'05-Feb-1990'}],notes:'Assessment notes retained.',groups:[{title:'Detailed Property Assessment Summary',rows:[{label:'Property price at 75% LTV',amount:'$600,000',bold:true},{label:'Selected loan',amount:'$450,000'},{label:'Monthly instalment',amount:'$2,133.95'}]},{title:'Annual amortisation summary',rows:Array.from({length:25},(_,i)=>({label:'Year '+(i+1)+' balance',amount:'$123,456'}))}],assumptions:['Assessment-specific assumptions retained.']};
+const before=JSON.stringify([planner,assessment]);
+const bytes=P.combinedReport({name:'Test Household',date:'28 Oct 2026',planner,assessment}),pdf=new TextDecoder().decode(bytes);
+for(const text of ['Test Household','28 Oct 2026','01 / PROPERTY PLANNER','02 / AFFORDABILITY ASSESSMENT','Purchase breakdown','Detailed Property Assessment Summary','Planner notes retained.','Assessment notes retained.','Assessment-specific assumptions retained.','05-Feb-1990','$450,000','$600,000'])ok(pdf.includes(text));
+ok(!pdf.includes('Old planner name'));ok(!pdf.includes('Old assessment name'));ok(!pdf.includes('OLD DATE'));ok(JSON.stringify([planner,assessment])===before);
+const count=+(pdf.match(/\/Type \/Pages \/Kids \[.*?\] \/Count (\d+)/)||[])[1];ok(count>=5);
+for(let i=1;i<=count;i++)ok(pdf.includes('('+i+' / '+count+')'));
+const startXref=+(pdf.match(/startxref\n(\d+)/)||[])[1];ok(pdf.slice(startXref).startsWith('xref'));
+ok(P.filename('Test Household',new Date('2026-10-27T17:00:00Z'))==='Property Planner - Test Household - 28Oct26');
+assert.throws(()=>P.combinedReport({name:'Test',date:'28 Oct 2026',planner}));checks++;
+fs.writeFileSync(__dirname+'/combined-report-sample.pdf',bytes);
+console.log(checks+' combined report checks passed; '+count+'-page sample generated.');

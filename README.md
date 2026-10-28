@@ -121,3 +121,10 @@ The detailed property summary is driven by the selected loan amount: implied pro
 Others also shows the original full loan (price × current starting LTV) in regular weight beside the pro-rated result.
 
 Additional checks: `node test-simplified.cjs` (saved-state normalization, income recognition, selected applicants, maturity and loan-driven property budgets).
+
+
+### Combined PDF report
+
+Use **Export combined report** in either Property Planner or Affordability Assessment. The report includes a premium blue cover, the current property scenario and all its breakdowns, followed by the current selected affordability assessment, applicant details, notes, assumptions and annual amortisation summary when an interest rate is entered. It uses a shared name (Property Planner name first, assessment name if blank, otherwise scenario label) and one Singapore report date across every page. The filename remains `Property Planner - Name - DDMMMYY.pdf`. Each workspace retains its own figures and notes; export does not overwrite names, assessment dates or calculation inputs. Both sections must contain valid figures; missing information opens a notice with a link to the relevant section. Existing individual exports remain available.
+
+`combined-report.js` coordinates the local workspaces. `pdf.js` renders the cover and both chapters in one document with continuous pagination. `node test-combined-report.cjs` checks both sections, shared identity, retained notes and assumptions, pagination, PDF cross-references and filename dates.
