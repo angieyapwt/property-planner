@@ -30,7 +30,7 @@
   function renderSelection(){
     const options=[['0','Applicant 1'],['1','Applicant 2'],['pair','Applicant 1 + 2']];
     if(state.applicants.length<2&&state.settings.selection!=='0')state.settings.selection='0';
-    for(const id of ['affSelection','affSummarySelection'])$(id).innerHTML=options.map(([value,label])=>`<button type="button" data-select-applicants="${value}" aria-pressed="${state.settings.selection===value}" ${value!=='0'&&state.applicants.length<2?'disabled':''}>${label}</button>`).join('');
+    for(const id of ['affSelection'])$(id).innerHTML=options.map(([value,label])=>`<button type="button" data-select-applicants="${value}" aria-pressed="${state.settings.selection===value}" ${value!=='0'&&state.applicants.length<2?'disabled':''}>${label}</button>`).join('');
   }
   function syncApplicants(){state.applicants.forEach((a,i)=>{
     const data=M.applicantValues(a,state.settings.asOf);
@@ -56,16 +56,32 @@
     $('affMetrics').innerHTML=[metric('Assessable monthly income',money(r.gross,2),'Monthly income + other annual income / 12'),metric('Selected monthly debts',money(r.debt,2),'Car, credit card and other loan repayments'),metric('Income-weighted age',r.age===null?'—':r.age.toFixed(2)+' years','Selected applicants'),metric('Estimated monthly OA',money(r.oa,2),'Selected applicants only')].join('');
     const warnings=[];if(!r.validAges)warnings.push('Enter a valid age or DOB for every selected applicant (18–100).');if(r.income<=0)warnings.push('Enter income to calculate loan capacity.');if(M.has(state.settings.stressRate)&&M.n(state.settings.stressRate)<4)warnings.push('The entered assessment rate is below the current MAS 4% floor. This assessment uses at least 4%.');if(r.stress>Math.max(4,M.n(state.settings.stressRate)))warnings.push('The quoted rate raises the effective assessment rate to '+r.stress.toFixed(2)+'%.');if(state.settings.asOf.slice(0,4)!=='2026')warnings.push('Automatic OA uses 2026 CPF tables. Enter actual OA amounts for other years.');if(r.debt>r.income*.55)warnings.push('Existing debts already exceed 55% of bank-recognised income. No TDSR headroom remains.');
     $('affWarnings').replaceChildren();for(const warning of warnings){const p=document.createElement('p');p.textContent=warning;$('affWarnings').append(p);}
-    $('affComparison').innerHTML=['hdb','ec','condo'].map(type=>{const o=r.outcomes[type],label=type==='hdb'?'HDB':type==='ec'?'EC':'Condo';return `<tr class="${state.settings.property===type?'active-property':''}"><th><button type="button" data-assess-property="${type}" aria-pressed="${state.settings.property===type}">${label}</button></th><td>${tenure(o.standard.months)}<small>${(o.standard.ltv*100).toFixed(0)}% LTV</small></td><td>${o.standard.valid?money(o.standard.capacity):'—'}</td><td>${o.standard.valid?money(M.propertyBudget(o.standard.capacity,o.standard.ltv).price):'—'}</td></tr>`;}).join('');
+    $('affComparison').innerHTML=['hdb','ec','condo'].map(type=>{const o=r.outcomes[type],label=type==='hdb'?'HDB':type==='ec'?'EC':'Condo';return `<tr data-assess-property="${type}" tabindex="0" aria-label="Open ${label} property assessment summary" aria-selected="${state.settings.property===type}" class="${state.settings.property===type?'active-property':''}"><th><button type="button" data-assess-property="${type}" aria-pressed="${state.settings.property===type}">${label}</button></th><td>${tenure(o.standard.months)}<small>${(o.standard.ltv*100).toFixed(0)}% LTV</small></td><td>${o.standard.valid?money(o.standard.capacity):'—'}</td><td>${o.standard.valid?money(M.propertyBudget(o.standard.capacity,o.standard.ltv).price):'—'}</td></tr>`;}).join('');
     const propertyLabel={hdb:'HDB',ec:'EC',condo:'Condo'}[state.settings.property];
     $('affDetailTitle').textContent=propertyLabel+' Property Assessment Summary';
     if(document.activeElement!==$('affStandardYears'))$('affStandardYears').value=r.option.months?number(r.option.months/12):'';
     if(!M.has(state.settings.loan))$('affLoan').value=r.option.valid?number(r.option.maxLoan):'';
     const budget=M.propertyBudget(r.loan,r.option.ltv);
-    $('affAffordablePrice').textContent=r.option.valid?money(budget.price,2):'—';
-    $('affPriceFormula').textContent='Loan ÷ '+(r.option.ltv*100).toFixed(0)+'% LTV. Assumes price equals valuation.';
     const status=!r.option.valid?'Enter income and age, then select an available tenure.':r.within?'Within the modelled debt-servicing and LTV limits.':'The simulated loan exceeds at least one modelled lending limit.';
-    $('repaymentSummary').innerHTML=`<div class="assessment-result ${r.within?'within':'outside'}"><span class="eyebrow">${esc(status)}</span><div><span>Property · ${propertyLabel}</span><strong>${(r.option.ltv*100).toFixed(0)}% LTV</strong></div><div><span>Effective MAS Assessment rate</span><strong>${r.stress.toFixed(2)}%</strong></div><div><span>Loan tenure</span><strong>${tenure(r.option.months)}</strong></div><div><span>Interest rate</span><strong>${r.actualEntered?number(M.n(state.settings.actualRate))+'%':'Enter interest rate'}</strong></div></div><div class="aff-metrics repayment-metrics">${metric('Downpayment before purchase costs',r.option.valid?money(budget.equity,2):'—','CPF / cash contribution required')}${metric('Minimum cash downpayment',r.option.valid?money(budget.minCash,2):'—','Part of the downpayment; assumes no COV')}${metric('Monthly instalment',r.actualEntered?money(r.schedule.payment,2):'Enter interest rate','At the quoted / illustrative rate')}${metric('First-month principal',r.actualEntered?money(r.schedule.rows[0]?.principal||0,2):'—')}${metric('First-month interest',r.actualEntered?money(r.schedule.rows[0]?.interest||0,2):'—')}${metric('Monthly cash gap after estimated OA',r.actualEntered?money(r.cashMonthly,2):'—','Current OA estimate; CPF usage limits apply')}</div>`;
+    const applicants=r.indices.map(i=>'Applicant '+(i+1)+(state.applicants[i].name?' · '+state.applicants[i].name:'')).join(' + ');
+    const rows=[
+      ['Property',propertyLabel],['Applicants assessed',applicants],
+      ['Maximum assessed loan',r.option.valid?money(r.option.maxLoan,2):'—','key'],
+      ['Maximum property price',r.option.valid?money(M.propertyBudget(r.option.maxLoan,r.option.ltv).price,2):'—','key'],
+      ['Selected loan amount',r.option.valid?money(r.loan,2):'—'],
+      ['Property price supported by selected loan',r.option.valid?money(budget.price,2):'—'],
+      ['Loan tenure',tenure(r.option.months)],['LTV limit',(r.option.ltv*100).toFixed(0)+'%'],
+      ['Effective MAS Assessment rate',r.stress.toFixed(2)+'%'],
+      ['Quoted / illustrative interest rate',r.actualEntered?number(M.n(state.settings.actualRate))+'%':'Not entered'],
+      ['Downpayment before purchase costs',r.option.valid?money(budget.equity,2):'—'],
+      ['Minimum cash downpayment',r.option.valid?money(budget.minCash,2):'—'],
+      ['Monthly instalment',r.actualEntered?money(r.schedule.payment,2):'—','key'],
+      ['First-month principal',r.actualEntered?money(r.schedule.rows[0]?.principal||0,2):'—'],
+      ['First-month interest',r.actualEntered?money(r.schedule.rows[0]?.interest||0,2):'—'],
+      ['Estimated monthly OA',money(r.oa,2)],
+      ['Monthly cash gap after estimated OA',r.actualEntered?money(r.cashMonthly,2):'—']
+    ];
+    $('repaymentSummary').innerHTML=`<p class="summary-assessment-status ${r.within?'within':'outside'}" role="status">${esc(status)}</p><dl class="property-summary-lines">${rows.map(([label,value,kind])=>`<div class="${kind||''}"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl><p class="small muted">Property price = loan ÷ LTV, assuming price equals valuation. Downpayments exclude stamp duties and other purchase costs.</p>`;
     $('exportCombinedAssessment').disabled=!r.option.valid||!window.EstatePlannerBridge?.getReportData();$('affCombinedHint').textContent=$('exportCombinedAssessment').disabled?'Complete the assessment and enter a Property Planner calculation to enable combined export.':'Combined export is available: both current calculations will be included.';
     $('applyAffLoan').disabled=!r.within||!r.option.valid;$('exportAffPdf').disabled=!r.option.valid;if($('amortisation').open)renderAmortisation();
   }
@@ -93,10 +109,11 @@
   $('affForm').addEventListener('click',e=>{if(e.target.dataset.resetAge!==undefined){const a=state.applicants[+e.target.dataset.resetAge];a.ageAuto=true;renderResults();persist();}if(e.target.dataset.resetOa!==undefined){const a=state.applicants[+e.target.dataset.resetOa];a.oaAuto=true;renderResults();persist();}if(e.target.dataset.remove!==undefined){state.applicants.splice(+e.target.dataset.remove,1);renderApplicants();renderResults();persist();}});
   $('addApplicant').addEventListener('click',()=>{if(state.applicants.length<2){state.applicants.push(M.applicant());state.settings.selection='pair';renderApplicants();renderResults();persist();}});
   $('affForm').addEventListener('focusout',e=>{if(e.target.inputMode==='decimal'&&e.target.dataset.field){const a=state.applicants[+e.target.dataset.app],key=e.target.dataset.field;if(key==='oa'&&a.oaAuto!==false)return;e.target.value=M.has(a[key])?number(a[key]):'';}});
-  function chooseProperty(type){state.targets[state.settings.property].loan=state.settings.loan;state.settings.property=type;state.settings.term='standard';state.settings.loan=state.targets[type].loan||'';$('affProperty').value=type;importPlannerDetails();$('affLoan').value=state.settings.loan;renderResults();persist();}
+  function chooseProperty(type,navigate=false){state.targets[state.settings.property].loan=state.settings.loan;state.settings.property=type;state.settings.term='standard';state.settings.loan=state.targets[type].loan||'';$('affProperty').value=type;importPlannerDetails();$('affLoan').value=state.settings.loan;renderResults();persist();if(navigate){$('affDetail').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});$('affDetailTitle').focus({preventScroll:true});}}
   for(const [key,id]of Object.entries(settingIds))$(id).addEventListener($(id).tagName==='SELECT'?'change':'input',()=>{if(key==='property'){chooseProperty($(id).value);return;}state.settings[key]=$(id).value;if(key==='loan')state.targets[state.settings.property].loan=state.settings.loan;renderResults();persist();});
-  for(const id of ['affSelection','affSummarySelection'])$(id).addEventListener('click',e=>{const button=e.target.closest('[data-select-applicants]');if(!button||button.disabled)return;state.settings.selection=button.dataset.selectApplicants;state.settings.loan='';for(const t of Object.values(state.targets))t.loan='';renderResults();persist();});
-  $('affComparison').addEventListener('click',e=>{const button=e.target.closest('[data-assess-property]');if(button)chooseProperty(button.dataset.assessProperty);});
+  for(const id of ['affSelection'])$(id).addEventListener('click',e=>{const button=e.target.closest('[data-select-applicants]');if(!button||button.disabled)return;state.settings.selection=button.dataset.selectApplicants;state.settings.loan='';for(const t of Object.values(state.targets))t.loan='';renderResults();persist();});
+  $('affComparison').addEventListener('click',e=>{const button=e.target.closest('[data-assess-property]');if(button)chooseProperty(button.dataset.assessProperty,true);});
+  $('affComparison').addEventListener('keydown',e=>{if(e.target.tagName==='TR'&&['Enter',' '].includes(e.key)){e.preventDefault();chooseProperty(e.target.dataset.assessProperty,true);}});
   $('affStandardYears').addEventListener('focusout',()=>{if(!M.has(state.settings.standardYears))$('affStandardYears').value=lastResult.option.months?number(lastResult.option.months/12):'';});
   $('affDate').addEventListener('change',()=>{if(M.dateParts($('affDate').value)){state.settings.asOf=$('affDate').value;state.settings.asOfAuto=false;renderResults();persist();}});
   $('affToday').addEventListener('click',()=>{state.settings.asOf=M.today();state.settings.asOfAuto=true;$('affDate').value=state.settings.asOf;renderResults();persist();});

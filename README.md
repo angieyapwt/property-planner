@@ -137,3 +137,8 @@ Affordability shows Max Loan and Max Property Price for HDB, EC and Condo, a num
 Save assessment to device downloads a standalone JSON restore file; Restore assessment reloads it. Browser autosaving continues. Assessment-only PDF export remains available, and combined export is enabled when both calculations are available. Names follow between tabs while blank or previously shared; separately entered names remain independent. A manually entered planner loan can seed a blank matching assessment loan. A valid assessment can fill a blank matching Property Planner purchase when switching tabs; existing purchase figures are preserved. The explicit Use this loan action preserves a compatible sale-and-purchase scenario and existing price/valuation, and updates the loan. Monthly CPF OA contributions are not copied into total CPF savings fields.
 
 LTV results display whole percentages and dollar amounts; the unrounded formula still determines the loan. The comparison also shows original full loan minus pro-rated loan.
+
+### Read-only property summaries
+
+All editable assessment controls (including quoted interest, tenure, property selection, loan override and notes) are under Lending Assumptions. The matching HDB, EC or Condo summary displays labeled lines only, followed by save/export actions and expandable amortisation. Clicking any cell in a comparison row selects the property, scrolls to its summary and focuses its heading. Rows support Enter/Space keyboard activation and visible focus. Calculation, save and PDF data remain unchanged.
+
