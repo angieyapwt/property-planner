@@ -9,11 +9,11 @@
   const controls={builtYear:'ltvBuiltYear',leaseTerm:'ltvLeaseTerm',currentYear:'ltvCurrentYear',dob:'ltvDob',age:'ltvAge',ltv:'ltvLimit',price:'ltvPrice'};
   $('leaseForm').addEventListener('submit',e=>e.preventDefault());
   function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));$('othersSaveStatus').textContent='Saved on this device. Values remain available when you change tabs.';}catch{$('othersSaveStatus').textContent='Browser storage is unavailable. Download a backup to keep these figures.';}}
-  function sync(){for(const [key,id]of Object.entries(controls))$(id).value=key==='price'&&dates.has(state.price)?number(dates.n(state.price)):state[key];}
+  function sync(){for(const [key,id]of Object.entries(controls))$(id).value=key==='price'&&dates.has(state.price)?number(dates.n(state.price)):key==='dob'?DobInput.format(state.dob):state[key];}
   function render(){
     const r=M.calculate(state);$('ltvRemaining').textContent=r.remaining===null?'—':number(r.remaining)+' years';
     if(state.ageAuto&&state.dob)$('ltvAge').value=r.age===null?'':r.age;
-    $('ltvDob').max=r.date||dates.today();$('ltvAgeMode').textContent=state.ageAuto&&state.dob?'Calculated from DOB as of '+(r.date||dates.today())+'.':'Manual age. Enter a DOB or use DOB age to calculate it automatically.';
+    $('ltvAgeMode').textContent=state.ageAuto&&state.dob?'Calculated from DOB as of '+(r.date||dates.today())+'.':'Manual age. Enter a DOB or use DOB age to calculate it automatically.';
     $('ltvUseDob').disabled=!state.dob;
     $('ltvResult').textContent=r.prorated===null?'—':r.prorated.toFixed(2)+'%';$('ltvMaxLoan').textContent=r.loan===null?'—':money(r.loan);
     $('ltvCoverage').textContent=r.coverage===null?'—':'Age '+number(r.coverage);
@@ -22,7 +22,7 @@
     $('ltvWorking').textContent=r.prorated===null?'((Remaining lease − 20) ÷ (95 − youngest age − 20)) × current LTV':r.status==='full'?number(r.remaining)+' years + age '+number(r.age)+' = '+number(r.coverage)+'; current LTV '+number(r.base)+'% applies.':r.status==='short-lease'?'Remaining lease '+number(r.remaining)+' years ≤ 20; applied LTV 0%.':'(('+number(r.remaining)+' − 20) ÷ (95 − '+number(r.age)+' − 20)) × '+number(r.base)+'% = '+r.prorated.toFixed(2)+'%';
     $('ltvLoanWorking').textContent=r.loan===null?'Enter a property price to calculate the loan.':money(r.price)+' × '+r.prorated.toFixed(2)+'% = '+money(r.loan)+' (uses the unrounded LTV internally).';
   }
-  for(const [key,id]of Object.entries(controls))$(id).addEventListener(key==='dob'?'change':'input',()=>{state[key]=$(id).value;if(key==='currentYear')state.currentYearAuto=false;if(key==='dob')state.ageAuto=true;if(key==='age')state.ageAuto=!dates.has(state.age);render();persist();});
+  for(const [key,id]of Object.entries(controls))$(id).addEventListener('input',()=>{state[key]=key==='dob'?DobInput.parse($(id).value):$(id).value;if(key==='currentYear')state.currentYearAuto=false;if(key==='dob')state.ageAuto=true;if(key==='age')state.ageAuto=!dates.has(state.age);render();persist();});
   $('ltvUseDob').addEventListener('click',()=>{state.ageAuto=true;render();persist();});
   $('ltvUseYear').addEventListener('click',()=>{state.currentYearAuto=true;state.currentYear=dates.today().slice(0,4);$('ltvCurrentYear').value=state.currentYear;render();persist();});
   $('ltvPrice').addEventListener('focusout',()=>{$('ltvPrice').value=dates.has(state.price)?number(dates.n(state.price)):'';});

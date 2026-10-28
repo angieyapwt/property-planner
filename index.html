@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="styles.css?v=20261028-1">
   <link rel="stylesheet" href="theme-blue.css?v=20261028-2">
   <link rel="stylesheet" href="affordability.css?v=20261028-2">
-  <script src="model.js?v=20261028-2" defer></script><script src="affordability-model.js?v=20261028-2" defer></script><script src="lease-ltv-model.js?v=20261028-3" defer></script><script src="pdf.js?v=20261028-2" defer></script><script src="app.js?v=20261028-3" defer></script>
-  <script src="affordability.js?v=20261028-3" defer></script>
+  <script src="model.js?v=20261028-2" defer></script><script src="affordability-model.js?v=20261028-2" defer></script><script src="lease-ltv-model.js?v=20261028-3" defer></script><script src="pdf.js?v=20261028-2" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=20261028-3" defer></script>
+  <script src="affordability.js?v=20261028-4" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-3">
-  <script src="others.js?v=20261028-3" defer></script>
+  <script src="others.js?v=20261028-4" defer></script>
 </head>
 <body>
   <a class="skip" href="#workspace">Skip to calculator</a>
@@ -97,7 +97,7 @@
             <label class="field"><span class="field-label">Original lease term (years)</span><input type="number" id="ltvLeaseTerm" min="1" max="999" step="1" value="99"><span class="hint">Defaults to 99 years. Edit for a different original lease.</span></label>
             <label class="field"><span class="field-label">Current year</span><input type="number" id="ltvCurrentYear" min="1900" max="2200" step="1"><span class="hint"><button type="button" id="ltvUseYear" class="inline-button">Use the current year automatically</button></span></label>
             <div class="field"><span class="field-label">Remaining lease of property</span><output id="ltvRemaining" class="calculated-output">—</output><span class="hint">Original lease − (current year − built year).</span></div>
-            <label class="field"><span class="field-label">DOB of youngest buyer (optional)</span><input type="date" id="ltvDob"><span class="hint">Uses the actual birthday, with today’s month/day in the selected current year.</span></label>
+            <label class="field"><span class="field-label">DOB of youngest buyer (optional)</span><input type="text" id="ltvDob" data-dob-input inputmode="numeric" maxlength="11" placeholder="DDMMYYYY" autocomplete="bday"><span class="hint">Enter DDMMYYYY (e.g. 05021990 → 05-Feb-1990). Uses the actual birthday, with today’s month/day in the selected current year.</span></label>
             <label class="field"><span class="field-label">Age of youngest buyer</span><input type="number" id="ltvAge" min="0" max="120" step="1" placeholder="Enter age or DOB"><span class="hint"><span id="ltvAgeMode"></span> <button type="button" id="ltvUseDob" class="inline-button">Use DOB age</button></span></label>
             <label class="field"><span class="field-label">Current LTV limit (%)</span><input type="number" id="ltvLimit" min="0" max="100" step="0.1" value="75"><span class="hint">Defaults to 75%. Edit to test another applicable LTV limit.</span></label>
             <label class="field"><span class="field-label">Property price</span><div class="money-wrap"><span aria-hidden="true">$</span><input id="ltvPrice" inputmode="decimal" maxlength="18" placeholder="Enter property price"></div><span class="hint"><button type="button" class="inline-button" id="ltvUsePrice">Use HDB Property Planner price</button></span></label>
