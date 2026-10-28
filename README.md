@@ -37,7 +37,7 @@ MSR is applied to HDB and new/pre-MOP EC financing; post-MOP resale EC and condo
 
 Automatic OA uses the published 2026 CPF contribution and allocation tables for citizens / full-rate PR employees. Ordinary monthly wages are capped at $8,000; low-wage contribution formulas and contribution rounding are included. Age bands change in the month after the birthday when DOB is supplied. RA allocations may be redirected to OA if the FRS option is selected from age 55. Bonus CPF and other account overflows are not modelled. Use manual OA for other profiles, circumstances or years.
 
-Repayments assume a constant monthly-rest interest rate and show the first payment's principal/interest, total interest, cash gap after current OA and a +1% rate comparison. The monthly amortisation table rounds each month's interest/principal to cents and adjusts the final payment. PDF reports include an annual amortisation summary.
+Repayments assume a constant monthly-rest interest rate and show the first payment's principal/interest, total interest, cash gap after current OA and a +1% rate comparison. The monthly amortisation table rounds each month's interest/principal to cents and adjusts the final payment. PDF reports include an repayment summary without amortisation tables.
 
 Assessment data autosaves locally across property tabs and reloads. Property Planner saved estimates can include an assessment snapshot; JSON backups include the current assessment. HDB and condo targets can be imported from the planner, and assessed HDB/condo loans can be copied back explicitly. EC results remain in the assessment/report to avoid relabelling an EC purchase as a condo scenario.
 
@@ -116,7 +116,7 @@ Branding: Estate Basics.
 
 The page uses a first housing loan, annual variable income at 70%, full-rate CPF allocation (with editable OA), no existing housing instalments, and EC subject to MSR. Main Max Loan always matures by age 65; maturity defaults to 65 and longer-tenure options are collapsed. Three synchronized buttons assess applicant 1, applicant 2 or applicants 1 + 2. New applicant entry is below the first applicant section. Older saved applicant details are preserved, while removed assumptions are normalized on restore.
 
-The detailed property summary is driven by the selected loan amount: implied property price = loan / LTV, with equity and minimum cash contributions shown before purchase costs. Price is assumed equal to valuation. It is a financing illustration, not a full cash-budget affordability limit. The selected loan can be sent to Property Planner for purchase-cost calculations. Extended tenure and amortisation remain expandable. PDFs use the same simplified assumptions and property summary.
+The detailed property summary is driven by the selected loan amount: implied property price = loan / LTV, with equity and minimum cash contributions shown before purchase costs. Price is assumed equal to valuation. It is a financing illustration, not a full cash-budget affordability limit. The selected loan can be sent to Property Planner for purchase-cost calculations. The on-screen amortisation table remains expandable. PDFs use the same simplified assumptions and property summary.
 
 Others also shows the original full loan (price × current starting LTV) in regular weight beside the pro-rated result.
 
@@ -125,7 +125,7 @@ Additional checks: `node test-simplified.cjs` (saved-state normalization, income
 
 ### Combined PDF report
 
-Use **Export combined report** in either Property Planner or Affordability Assessment. The report includes a premium blue cover, the current property scenario and all its breakdowns, followed by the current selected affordability assessment, applicant details, notes, assumptions and annual amortisation summary when an interest rate is entered. It uses a shared name (Property Planner name first, assessment name if blank, otherwise scenario label) and one Singapore report date across every page. The filename remains `Property Planner - Name - DDMMMYY.pdf`. Each workspace retains its own figures and notes; export does not overwrite names, assessment dates or calculation inputs. Both sections must contain valid figures; missing information opens a notice with a link to the relevant section. Existing individual exports remain available.
+Use **Export combined report** in either Property Planner or Affordability Assessment. The report includes a premium blue cover, the current property scenario and all its breakdowns, followed by the current selected affordability assessment, applicant details, notes, assumptions and repayment figures without amortisation tables. It uses a shared name (Property Planner name first, assessment name if blank, otherwise scenario label) and one Singapore report date across every page. The filename remains `Property Planner - Name - DDMMMYY.pdf`. Each workspace retains its own figures and notes; export does not overwrite names, assessment dates or calculation inputs. Both sections must contain valid figures; missing information opens a notice with a link to the relevant section. Existing individual exports remain available.
 
 `combined-report.js` coordinates the local workspaces. `pdf.js` renders the cover and both chapters in one document with continuous pagination. `node test-combined-report.cjs` checks both sections, shared identity, retained notes and assumptions, pagination, PDF cross-references and filename dates.
 
@@ -142,3 +142,14 @@ LTV results display whole percentages and dollar amounts; the unrounded formula 
 
 All editable assessment controls (including quoted interest, tenure, property selection, loan override and notes) are under Lending Assumptions. The matching HDB, EC or Condo summary displays labeled lines only, followed by save/export actions and expandable amortisation. Clicking any cell in a comparison row selects the property, scrolls to its summary and focuses its heading. Rows support Enter/Space keyboard activation and visible focus. Calculation, save and PDF data remain unchanged.
 
+
+
+### Fresh starts, IWAA and Others exports
+
+Affordability and Others have independent Start fresh actions with a confirmation dialog. Defaults return (4% assessment rate, age-65 maturity, 99-year original lease and 75% LTV); their current draft clears and persists. Other workspaces and downloaded saves remain intact. Fresh drafts suppress automatic old-planner prefill, including after reload.
+
+The planning model rounds income-weighted age upward to the next whole year before tenure/LTV checks, retaining `rawAge` for audit/tests. This is an explicitly requested conservative rounding assumption; the site/report does not claim a verified universal MAS rounding requirement. Tenure remains actual loan years and stays editable as clarified by the user. Property selection uses the HDB/EC/Condo comparison rows. Notes span both input columns.
+
+All currency values display without decimals while internal calculations retain precision. The summary omits duplicate selected-loan/property rows, effective assessment rate and minimum cash downpayment; remaining Max Loan and Max Property Price follow the editable loan amount. PDF exports contain no annual/monthly amortisation sections; the on-screen table remains available.
+
+Others includes Save to device (JSON), Restore calculation and standalone Export PDF, without combined export. The PDF contains lease/buyer inputs, full versus pro-rated loan amounts, the difference, formula and assumptions. Export is available only after a valid complete calculation with a property price. `workspace-fresh.js` manages reset confirmation; `node test-iwaa-reset.cjs` checks rounding, tenure effects and fresh-state persistence.

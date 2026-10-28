@@ -8,10 +8,10 @@
   function dateParts(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;const p=s.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]));return d.getUTCFullYear()===p[0]&&d.getUTCMonth()===p[1]-1&&d.getUTCDate()===p[2]?p:null;}
   function ageFromDob(dob,asOf=today()){const b=dateParts(dob),d=dateParts(asOf);if(!b||!d||dob>asOf)return null;return d[0]-b[0]-(d[1]<b[1]||(d[1]===b[1]&&d[2]<b[2])?1:0);}
   function applicant(){return {name:'',dob:'',age:'',ageAuto:true,income:'',incomeType:'fixed',annual:'',annualType:'variable',cpfProfile:'full',frsMet:false,oa:'',oaAuto:true,car:'',card:'',other:'',housing:''};}
-  function defaults(){return {version:1,workspaceVersion:2,name:'',notes:'',applicants:[applicant()],settings:{asOf:today(),selection:'all',property:'hdb',ecType:'new',stressRate:'4',thereafterRate:'',actualRate:'',maxMaturity:'65',existingLoans:'0',standardYears:'',extendedYears:'',term:'standard',loan:''},targets:{hdb:{price:'',valuation:'',loan:''},ec:{price:'',valuation:'',loan:''},condo:{price:'',valuation:'',loan:''}}};}
+  function defaults(){return {version:1,workspaceVersion:2,skipPlannerPrefill:false,name:'',notes:'',applicants:[applicant()],settings:{asOf:today(),selection:'all',property:'hdb',ecType:'new',stressRate:'4',thereafterRate:'',actualRate:'',maxMaturity:'65',existingLoans:'0',standardYears:'',extendedYears:'',term:'standard',loan:''},targets:{hdb:{price:'',valuation:'',loan:''},ec:{price:'',valuation:'',loan:''},condo:{price:'',valuation:'',loan:''}}};}
   function cleanState(raw){
     const state=defaults();if(!raw||typeof raw!=='object')return state;
-    state.workspaceVersion=raw.workspaceVersion===2?2:1;
+    state.workspaceVersion=raw.workspaceVersion===2?2:1;state.skipPlannerPrefill=raw.skipPlannerPrefill===true;
     state.name=String(raw.name??'').slice(0,80);state.notes=String(raw.notes??'').slice(0,4000);
     if(Array.isArray(raw.applicants)&&raw.applicants.length)state.applicants=raw.applicants.slice(0,8).map(r=>{const a=applicant();if(!r||typeof r!=='object')return a;for(const k of Object.keys(a)){if(r[k]===undefined)continue;if(['ageAuto','oaAuto','frsMet'].includes(k))a[k]=r[k]===true;else if(k==='name')a[k]=String(r[k]).slice(0,60);else if(k==='dob')a[k]=dateParts(r[k])?r[k]:'';else if(k==='cpfProfile')a[k]=['full','none','manual'].includes(r[k])?r[k]:'full';else if(k.endsWith('Type'))a[k]=r[k]==='variable'?'variable':'fixed';else a[k]=has(r[k])?String(Math.min(n(r[k]),1e10)):'';}return a;});
     const s=raw.settings||{};
@@ -75,7 +75,8 @@
     const state=cleanState(raw),s=state.settings,indices=selectedIndices(state),values=indices.map(i=>applicantValues(state.applicants[i],s.asOf));
     const sum=k=>values.reduce((v,a)=>v+a[k],0),gross=sum('gross'),income=sum('recognized'),debt=sum('debt'),housing=sum('housing'),oa=sum('cpf');
     const validAges=values.length>0&&values.every(v=>v.age!==null&&v.age>=18&&v.age<=100);
-    const age=validAges?(gross?values.reduce((total,v)=>total+v.age*v.gross,0)/gross:Math.max(...values.map(v=>v.age))):null;
+    const rawAge=validAges?(gross?values.reduce((total,v)=>total+v.age*v.gross,0)/gross:Math.max(...values.map(v=>v.age))):null;
+    const age=rawAge===null?null:Math.ceil(rawAge-1e-10);
     const stress=Math.max(4,n(s.stressRate),n(s.actualRate),n(s.thereafterRate));
     const tdsrHeadroom=Math.max(income*.55-debt,0),msrHeadroom=Math.max(income*.30-housing,0),count=Math.min(2,Math.floor(n(s.existingLoans)));
     const normalLtv=[.75,.45,.35][count],reducedLtv=[.55,.25,.15][count],bankMaturity=Math.min(85,Math.max(65,n(s.maxMaturity)||65));
@@ -101,7 +102,7 @@
     }
     const property=outcomes[s.property],option=property[s.term],loan=has(s.loan)?n(s.loan):option.maxLoan,actualEntered=has(s.actualRate),schedule=amortize(loan,n(s.actualRate),option.months);
     const stressedPayment=payment(loan,stress,option.months),tdsr=income?(debt+stressedPayment)/income:0,msr=income?(housing+stressedPayment)/income:0;
-    return {state,indices,values,gross,income,debt,housing,oa,age,validAges,stress,tdsrHeadroom,msrHeadroom,bankMaturity,outcomes,property,option,loan,actualEntered,schedule,stressedPayment,tdsr,msr,within:option.valid&&loan<=option.maxLoan&&tdsr<=.55+1e-7&&(!option.msr||msr<=.30+1e-7),cashMonthly:Math.max(schedule.payment-oa,0),higherRatePayment:payment(loan,n(s.actualRate)+1,option.months)};
+    return {state,indices,values,gross,income,debt,housing,oa,age,rawAge,validAges,stress,tdsrHeadroom,msrHeadroom,bankMaturity,outcomes,property,option,loan,actualEntered,schedule,stressedPayment,tdsr,msr,within:option.valid&&loan<=option.maxLoan&&tdsr<=.55+1e-7&&(!option.msr||msr<=.30+1e-7),cashMonthly:Math.max(schedule.payment-oa,0),higherRatePayment:payment(loan,n(s.actualRate)+1,option.months)};
   }
   const api={simplifyState,propertyBudget,n,has,cents,today,dateParts,ageFromDob,applicant,defaults,cleanState,cpfOa,applicantValues,selectedIndices,payment,presentValue,amortize,assess};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.AffordabilityModel=api;

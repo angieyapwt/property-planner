@@ -3,8 +3,8 @@
   'use strict';
   const dates=typeof module!=='undefined'&&module.exports?require('./affordability-model.js'):root.AffordabilityModel;
   const n=dates.n,has=dates.has;
-  function defaults(){return {builtYear:'',leaseTerm:'99',currentYear:dates.today().slice(0,4),currentYearAuto:true,dob:'',age:'',ageAuto:true,ltv:'75',price:''};}
-  function cleanState(raw){const state=defaults();if(!raw||typeof raw!=='object')return state;for(const key of ['builtYear','leaseTerm','currentYear','age','ltv','price'])if(raw[key]!==undefined)state[key]=has(raw[key])?String(Math.min(n(raw[key]),key==='price'?1e12:9999)):'';state.currentYearAuto=raw.currentYearAuto!==false;if(state.currentYearAuto)state.currentYear=dates.today().slice(0,4);state.dob=dates.dateParts(raw.dob)?raw.dob:'';state.ageAuto=raw.ageAuto!==false;return state;}
+  function defaults(){return {skipPlannerPrefill:false,builtYear:'',leaseTerm:'99',currentYear:dates.today().slice(0,4),currentYearAuto:true,dob:'',age:'',ageAuto:true,ltv:'75',price:''};}
+  function cleanState(raw){const state=defaults();if(!raw||typeof raw!=='object')return state;for(const key of ['builtYear','leaseTerm','currentYear','age','ltv','price'])if(raw[key]!==undefined)state[key]=has(raw[key])?String(Math.min(n(raw[key]),key==='price'?1e12:9999)):'';state.skipPlannerPrefill=raw.skipPlannerPrefill===true;state.currentYearAuto=raw.currentYearAuto!==false;if(state.currentYearAuto)state.currentYear=dates.today().slice(0,4);state.dob=dates.dateParts(raw.dob)?raw.dob:'';state.ageAuto=raw.ageAuto!==false;return state;}
   function referenceDate(year,today=dates.today()){const parts=dates.dateParts(today);if(!parts||!Number.isInteger(year)||year<1900||year>2200)return null;const month=parts[1],day=Math.min(parts[2],new Date(Date.UTC(year,month,0)).getUTCDate());return String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');}
   function calculate(raw,today=dates.today()){
     const state=cleanState(raw),year=n(state.currentYear),built=n(state.builtYear),lease=n(state.leaseTerm),base=n(state.ltv),price=n(state.price),date=referenceDate(year,today);

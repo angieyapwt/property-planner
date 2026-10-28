@@ -25,7 +25,7 @@
   function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4300);}
   function persist(){drafts[current.scenario]=structuredClone(current);try{localStorage.setItem(STORAGE,JSON.stringify({version:1,cases,drafts,current}));savingAvailable=true;$('draftStatus').textContent='Draft saved on this device.';return true;}catch{savingAvailable=false;$('draftStatus').textContent='Browser storage unavailable. Download a backup to keep your figures.';return false;}}
   function calculatedCommission(side){return commission(n(current.inputs[side==='buy'?'buyPrice':'salePrice']),current.inputs[side+'Rate'],current.inputs[side+'CommissionOn'],null,current.inputs[side+'CommissionGst']!==false);}
-  function moneyField(key,label,hint='',placeholder='0'){const raw=current.inputs[key];const value=key.endsWith('Override')&&!has(raw)?calculatedCommission(key.startsWith('sale')?'sale':'buy'):raw;return `<label class="field"><span class="field-label">${label}</span><div class="money-wrap"><span aria-hidden="true">$</span><input data-key="${key}" id="${key}" type="text" inputmode="decimal" maxlength="18" placeholder="${placeholder}" value="${has(value)?esc(n(value).toLocaleString('en-SG',{maximumFractionDigits:2})):''}" aria-label="${esc(label)}"></div>${hint?`<span class="hint">${hint}</span>`:''}</label>`;}
+  function moneyField(key,label,hint='',placeholder='0'){const raw=current.inputs[key];const value=key.endsWith('Override')&&!has(raw)?calculatedCommission(key.startsWith('sale')?'sale':'buy'):raw;return `<label class="field"><span class="field-label">${label}</span><div class="money-wrap"><span aria-hidden="true">$</span><input data-key="${key}" id="${key}" type="text" inputmode="decimal" maxlength="18" placeholder="${placeholder}" value="${has(value)?esc(n(value).toLocaleString('en-SG',{maximumFractionDigits:0})):''}" aria-label="${esc(label)}"></div>${hint?`<span class="hint">${hint}</span>`:''}</label>`;}
   function selectField(key,label,options,hint=''){return `<label class="field"><span class="field-label">${label}</span><select data-key="${key}" id="${key}">${options.map(([value,text])=>`<option value="${esc(value)}" ${String(current.inputs[key])===String(value)?'selected':''}>${text}</option>`).join('')}</select>${hint?`<span class="hint">${hint}</span>`:''}</label>`;}
   function commissionFields(side){
     const enabled=current.inputs[side+'CommissionOn']!==false, gst=current.inputs[side+'CommissionGst']!==false;
@@ -38,7 +38,7 @@
     for(const side of ['buy','sale']){
       const input=$(side+'Override');if(!input)continue;
       const manual=has(current.inputs[side+'Override']);
-      if(!manual)input.value=calculatedCommission(side).toLocaleString('en-SG',{maximumFractionDigits:2});
+      if(!manual)input.value=calculatedCommission(side).toLocaleString('en-SG',{maximumFractionDigits:0});
       input.dataset.mode=manual?'manual':'automatic';
       const reset=$('calculator').querySelector('[data-reset-commission="'+side+'"]');
       if(reset){reset.textContent=manual?'Use commission rate':'Calculated from commission rate';reset.disabled=!manual;}
@@ -50,7 +50,7 @@
     const auto=current.inputs.buyLoanAuto!==false;
     const value=auto?n(current.inputs.buyPrice)*.75:current.inputs.buyLoan;
     if(auto)current.inputs.buyLoan=has(current.inputs.buyPrice)?String(value):'';
-    input.value=has(value)?n(value).toLocaleString('en-SG',{maximumFractionDigits:2}):'';
+    input.value=has(value)?n(value).toLocaleString('en-SG',{maximumFractionDigits:0}):'';
     input.disabled=current.inputs.loanType==='No loan';
     const button=$('autoLoan');if(button){button.textContent=auto?'Automatic · 75% of purchase price':'Use automatic 75%';button.classList.toggle('is-auto',auto);}
   }
@@ -145,7 +145,7 @@
   $('calculator').addEventListener('input',handleField);
   $('calculator').addEventListener('change',event=>{if(event.target.tagName==='SELECT')handleField(event);});
   $('calculator').addEventListener('click',event=>{if(event.target.dataset.resetCommission){current.inputs[event.target.dataset.resetCommission+'Override']='';syncCommissionFields();rememberShared(current);renderSummary();persist();}if(event.target.id==='autoLoan'){current.inputs.buyLoanAuto=true;syncAutoLoan();rememberShared(current);renderSummary();persist();}});
-  $('calculator').addEventListener('focusout',e=>{const key=e.target.dataset.key;if(!numericKeys.includes(key)||e.target.type==='number')return;e.target.value=has(current.inputs[key])?n(current.inputs[key]).toLocaleString('en-SG',{maximumFractionDigits:2}):'';syncCommissionFields();});
+  $('calculator').addEventListener('focusout',e=>{const key=e.target.dataset.key;if(!numericKeys.includes(key)||e.target.type==='number')return;e.target.value=has(current.inputs[key])?n(current.inputs[key]).toLocaleString('en-SG',{maximumFractionDigits:0}):'';syncCommissionFields();});
   $('estimateName').addEventListener('input',e=>{const old=current.name;current.name=e.target.value;window.EstateAffordability?.shareName(current.name,old);persist();});$('notes').addEventListener('input',e=>{current.notes=e.target.value;persist();});
   $('saveEstimate').addEventListener('click',saveEstimate);$('exportPdf').addEventListener('click',exportPdf);
   $('openSaved').addEventListener('click',()=>{renderSaved();$('savedDialog').showModal();});$('closeSaved').addEventListener('click',()=>$('savedDialog').close());
