@@ -110,3 +110,14 @@ Run `node test.cjs`, `node test-enhancements.cjs`, `node test-affordability.cjs`
 Use Settings → Pages → Deploy from a branch → main → / (root). `.nojekyll` keeps publication static.
 
 Branding: Estate Basics.
+
+
+### Simplified affordability workspace
+
+The page uses a first housing loan, annual variable income at 70%, full-rate CPF allocation (with editable OA), no existing housing instalments, and EC subject to MSR. Main Max Loan always matures by age 65; maturity defaults to 65 and longer-tenure options are collapsed. Three synchronized buttons assess applicant 1, applicant 2 or applicants 1 + 2. New applicant entry is below the first applicant section. Older saved applicant details are preserved, while removed assumptions are normalized on restore.
+
+The detailed property summary is driven by the selected loan amount: implied property price = loan / LTV, with equity and minimum cash contributions shown before purchase costs. Price is assumed equal to valuation. It is a financing illustration, not a full cash-budget affordability limit. The selected loan can be sent to Property Planner for purchase-cost calculations. Extended tenure and amortisation remain expandable. PDFs use the same simplified assumptions and property summary.
+
+Others also shows the original full loan (price × current starting LTV) in regular weight beside the pro-rated result.
+
+Additional checks: `node test-simplified.cjs` (saved-state normalization, income recognition, selected applicants, maturity and loan-driven property budgets).

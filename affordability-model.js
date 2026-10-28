@@ -8,9 +8,10 @@
   function dateParts(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;const p=s.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]));return d.getUTCFullYear()===p[0]&&d.getUTCMonth()===p[1]-1&&d.getUTCDate()===p[2]?p:null;}
   function ageFromDob(dob,asOf=today()){const b=dateParts(dob),d=dateParts(asOf);if(!b||!d||dob>asOf)return null;return d[0]-b[0]-(d[1]<b[1]||(d[1]===b[1]&&d[2]<b[2])?1:0);}
   function applicant(){return {name:'',dob:'',age:'',ageAuto:true,income:'',incomeType:'fixed',annual:'',annualType:'variable',cpfProfile:'full',frsMet:false,oa:'',oaAuto:true,car:'',card:'',other:'',housing:''};}
-  function defaults(){return {version:1,name:'',notes:'',applicants:[applicant()],settings:{asOf:today(),selection:'all',property:'hdb',ecType:'new',stressRate:'4',thereafterRate:'',actualRate:'',maxMaturity:'75',existingLoans:'0',standardYears:'',extendedYears:'',term:'standard',loan:''},targets:{hdb:{price:'',valuation:'',loan:''},ec:{price:'',valuation:'',loan:''},condo:{price:'',valuation:'',loan:''}}};}
+  function defaults(){return {version:1,workspaceVersion:2,name:'',notes:'',applicants:[applicant()],settings:{asOf:today(),selection:'all',property:'hdb',ecType:'new',stressRate:'4',thereafterRate:'',actualRate:'',maxMaturity:'65',existingLoans:'0',standardYears:'',extendedYears:'',term:'standard',loan:''},targets:{hdb:{price:'',valuation:'',loan:''},ec:{price:'',valuation:'',loan:''},condo:{price:'',valuation:'',loan:''}}};}
   function cleanState(raw){
     const state=defaults();if(!raw||typeof raw!=='object')return state;
+    state.workspaceVersion=raw.workspaceVersion===2?2:1;
     state.name=String(raw.name??'').slice(0,80);state.notes=String(raw.notes??'').slice(0,4000);
     if(Array.isArray(raw.applicants)&&raw.applicants.length)state.applicants=raw.applicants.slice(0,8).map(r=>{const a=applicant();if(!r||typeof r!=='object')return a;for(const k of Object.keys(a)){if(r[k]===undefined)continue;if(['ageAuto','oaAuto','frsMet'].includes(k))a[k]=r[k]===true;else if(k==='name')a[k]=String(r[k]).slice(0,60);else if(k==='dob')a[k]=dateParts(r[k])?r[k]:'';else if(k==='cpfProfile')a[k]=['full','none','manual'].includes(r[k])?r[k]:'full';else if(k.endsWith('Type'))a[k]=r[k]==='variable'?'variable':'fixed';else a[k]=has(r[k])?String(Math.min(n(r[k]),1e10)):'';}return a;});
     const s=raw.settings||{};
@@ -21,6 +22,23 @@
     state.settings.ecType=s.ecType==='resale'?'resale':'new';state.settings.selection=String(s.selection??'all');state.settings.term=s.term==='extended'?'extended':'standard';
     for(const type of ['hdb','ec','condo'])for(const k of ['price','valuation','loan'])if(raw.targets?.[type]?.[k]!==undefined)state.targets[type][k]=has(raw.targets[type][k])?String(Math.min(n(raw.targets[type][k]),1e12)):'';
     return state;
+  }
+  // The streamlined workspace assumes a first housing loan and a new EC.
+  // Keep legacy model options for old report calculations; normalize every UI restore.
+  function simplifyState(raw){
+    const state=cleanState(raw),s=state.settings;
+    if(state.workspaceVersion!==2){s.maxMaturity='65';s.term='standard';}
+    if(s.term==='extended')s.loan='';s.term='standard';
+    state.workspaceVersion=2;s.existingLoans='0';s.thereafterRate='';s.ecType='new';
+    for(const a of state.applicants){a.annualType='variable';a.cpfProfile='full';a.frsMet=false;a.housing='';}
+    for(const target of Object.values(state.targets)){target.price='';target.valuation='';}
+    if(s.selection==='all'||s.selection==='pair')s.selection=state.applicants.length>1?'pair':'0';
+    if(!selectedIndices(state).length||(/^\d+$/.test(s.selection)&&+s.selection>=state.applicants.length))s.selection='0';
+    return state;
+  }
+  function propertyBudget(loan,ltv){
+    const price=ltv>0?n(loan)/ltv:0,equity=Math.max(price-n(loan),0),cash=price*(ltv>=.75?.05:.10);
+    return {price,equity,minCash:Math.min(cash,equity),cpfOrCash:Math.max(equity-cash,0)};
   }
   function cpfOa(a,asOf=today()){
     const age=a.ageAuto!==false&&a.dob?ageFromDob(a.dob,asOf):has(a.age)?n(a.age):null;
@@ -60,7 +78,7 @@
     const age=validAges?(gross?values.reduce((total,v)=>total+v.age*v.gross,0)/gross:Math.max(...values.map(v=>v.age))):null;
     const stress=Math.max(4,n(s.stressRate),n(s.actualRate),n(s.thereafterRate));
     const tdsrHeadroom=Math.max(income*.55-debt,0),msrHeadroom=Math.max(income*.30-housing,0),count=Math.min(2,Math.floor(n(s.existingLoans)));
-    const normalLtv=[.75,.45,.35][count],reducedLtv=[.55,.25,.15][count],bankMaturity=Math.min(85,Math.max(65,n(s.maxMaturity)||75));
+    const normalLtv=[.75,.45,.35][count],reducedLtv=[.55,.25,.15][count],bankMaturity=Math.min(85,Math.max(65,n(s.maxMaturity)||65));
     const outcomes={};
     for(const type of ['hdb','ec','condo']){
       const publicFlat=type==='hdb',msr=publicFlat||(type==='ec'&&s.ecType!=='resale'),normalYears=publicFlat?25:30,maxYears=publicFlat?30:35;
@@ -85,6 +103,6 @@
     const stressedPayment=payment(loan,stress,option.months),tdsr=income?(debt+stressedPayment)/income:0,msr=income?(housing+stressedPayment)/income:0;
     return {state,indices,values,gross,income,debt,housing,oa,age,validAges,stress,tdsrHeadroom,msrHeadroom,bankMaturity,outcomes,property,option,loan,actualEntered,schedule,stressedPayment,tdsr,msr,within:option.valid&&loan<=option.maxLoan&&tdsr<=.55+1e-7&&(!option.msr||msr<=.30+1e-7),cashMonthly:Math.max(schedule.payment-oa,0),higherRatePayment:payment(loan,n(s.actualRate)+1,option.months)};
   }
-  const api={n,has,cents,today,dateParts,ageFromDob,applicant,defaults,cleanState,cpfOa,applicantValues,selectedIndices,payment,presentValue,amortize,assess};
+  const api={simplifyState,propertyBudget,n,has,cents,today,dateParts,ageFromDob,applicant,defaults,cleanState,cpfOa,applicantValues,selectedIndices,payment,presentValue,amortize,assess};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.AffordabilityModel=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

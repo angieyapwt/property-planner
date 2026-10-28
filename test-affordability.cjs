@@ -9,7 +9,7 @@ eq(M.cpfOa(a(30,12000),'2026-10-28').amount,M.cpfOa(a(30,8000),'2026-10-28').amo
 eq(M.cpfOa(a(30,50),'2026-10-28').amount,0);eq(M.cpfOa(a(30,500),'2026-10-28').contribution,85);
 eq(M.cpfOa(a(30,5000,{cpfProfile:'none'}),'2026-10-28').amount,0);eq(M.cpfOa(a(30,5000,{oaAuto:false,oa:'123.45'}),'2026-10-28').amount,123.45);
 const born={...a(35,5000),dob:'1991-10-28',ageAuto:true};near(M.cpfOa(born,'2026-10-28').amount,1150.14);assert.ok(M.cpfOa(born,'2026-11-01').amount<1100);checks++;
-let state=M.defaults();state.applicants=[a(30,7000),a(50,3000)];state.settings.asOfAuto=false;state.settings.asOf='2026-10-28';
+let state=M.defaults();eq(state.settings.maxMaturity,'65');state.settings.maxMaturity='75';state.applicants=[a(30,7000),a(50,3000)];state.settings.asOfAuto=false;state.settings.asOf='2026-10-28';
 let r=M.assess(state);near(r.age,36);near(r.income,10000);eq(r.outcomes.hdb.standard.months,300);eq(r.outcomes.hdb.extended.months,360);eq(r.outcomes.condo.standard.months,348);eq(r.outcomes.condo.extended.months,420);eq(r.outcomes.hdb.standard.ltv,.75);eq(r.outcomes.hdb.extended.ltv,.55);eq(r.outcomes.hdb.standard.binding,'MSR');eq(r.outcomes.condo.standard.binding,'TDSR');
 state.settings.ecType='resale';r=M.assess(state);eq(r.outcomes.ec.msr,false);state.settings.ecType='new';eq(M.assess(state).outcomes.ec.msr,true);
 state.applicants[0].car='1000';state.applicants[0].housing='200';r=M.assess(state);near(r.tdsrHeadroom,4300);near(r.msrHeadroom,2800);
