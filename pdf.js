@@ -85,12 +85,15 @@
     ])){wrap(p,94).forEach(l=>line(l,8.3,false,muted));y-=3;}
     }
     pages.push(ops.join('\n'));
+    return encodePages(pages,595,842,navy,muted);
+  }
+  function encodePages(pages,width,height,navy,muted){
     const objects=['<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>','<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>'];
     const kids=[];
     pages.forEach((stream,i)=>{
       const pageId=objects.length+1,streamId=pageId+1;kids.push(pageId+' 0 R');
-      stream+='\n'+navy+' rg 39 42 517 0.6 re f\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 39 27 Tm (ESTATE BASICS  /  PRIVATE PLANNING REPORT) Tj ET\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 509 27 Tm ('+(i+1)+' / '+pages.length+') Tj ET';
-      objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents '+streamId+' 0 R >>');
+      stream+='\n'+navy+' rg 39 42 '+(width-78)+' 0.6 re f\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 39 27 Tm (ESTATE BASICS  /  PRIVATE PLANNING REPORT) Tj ET\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 '+(width-86)+' 27 Tm ('+(i+1)+' / '+pages.length+') Tj ET';
+      objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+width+' '+height+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents '+streamId+' 0 R >>');
       objects.push('<< /Length '+stream.length+' >>\nstream\n'+stream+'\nendstream');
     });
     objects[1]='<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+pages.length+' >>';
@@ -98,10 +101,66 @@
     const xref=pdf.length;pdf+='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';for(const o of offsets.slice(1))pdf+=String(o).padStart(10,'0')+' 00000 n \n';pdf+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
     return new TextEncoder().encode(pdf);
   }
+  function clientReport(data){
+    const navy='0.075 0.15 0.28', blue='0.20 0.35 0.57', muted='0.36 0.44 0.55';
+    const pale='0.93 0.96 0.995', white='1 1 1', red='0.72 0.18 0.24';
+    const ops=[];
+    function box(x,y,w,h,color){ops.push(color+' rg '+[x,y,w,h].join(' ')+' re f');}
+    function text(value,x,y,size=10,font='F1',color=navy){
+      ops.push('BT /'+font+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+escape(value)+') Tj ET');
+    }
+    function right(value,x,y,bold){
+      const width=[...ascii(value)].reduce((sum,ch)=>sum+(/[0-9$]/.test(ch)?5.56:ch===','||ch==='.'?2.78:5.56),0);
+      text(value,x-width,y,10,bold?'F2':'F1');
+    }
+    box(0,496,842,99,navy);
+    text('ESTATE BASICS  /  PRIVATE CLIENT REPORT',39,568,9,'F2','0.75 0.85 1');
+    text(data.title,39,533,data.title.length>30?22:25,'F3',white);
+    text(data.property,40,511,10,'F2',white);
+    text(data.date,682,568,9,'F1',white);
+    if(data.client)text('Prepared for '+data.client,40,475,10,'F2');
+    data.highlights.forEach(([label,value],index)=>{
+      const x=39+index*257;
+      box(x,413,250,46,pale);
+      text(label.toUpperCase(),x+12,442,8,'F2',blue);
+      text(value,x+12,423,16,'F3');
+    });
+    box(39,377,470,24,pale);
+    text('PURCHASE & FUNDING',50,385,10,'F2',blue);
+    data.purchase.forEach(({label,value,bold,alert},i)=>{
+      const y=361-i*15;
+      if(i%2===0)box(39,y-4,470,14,'0.976 0.983 0.996');
+      text(label,50,y,9,bold?'F2':'F1',alert?red:navy);
+      right(value,498,y,bold);
+    });
+    box(525,377,278,24,pale);
+    text('MONTHLY MORTGAGE',536,385,10,'F2',blue);
+    text(data.tenure,536,358,10,'F1',muted);
+    data.mortgage.forEach(([label,amount],i)=>{
+      const y=285-i*66;
+      box(525,y,278,54,pale);
+      text(label.replace(' · ',' / '),536,y+35,9,'F2',blue);
+      text(amount,536,y+12,19,'F3');
+    });
+    if(data.cashCheck)text(data.cashCheck,536,193,9,'F2',blue);
+    box(39,104,764,43,navy);
+    data.totals.forEach(([label,value],i)=>{
+      const x=51+i*257;
+      text(label.toUpperCase(),x,131,8,'F2','0.75 0.85 1');
+      text(value,x,113,15,'F3',white);
+    });
+    let y=89;
+    for(const line of wrap(data.notes,92).slice(0,2)){
+      if(line){text(line,40,y,8,'F1',navy);y-=10;}
+    }
+    text('Planning estimate in SGD. Financing, CPF use and stamp duties are subject to confirmation.',40,y,8,'F1',muted);
+    text('Rates are illustrative and held constant over the stated term. Review actual terms with your lender.',40,y-10,8,'F1',muted);
+    return encodePages([ops.join('\n')],842,595,navy,muted);
+  }
   function combinedReport({name,date,planner,assessment}){
     if(!planner||!assessment)throw new Error('Both calculations are required.');
     return reportPdf({name,date,documents:[{...planner,title:'Property Planner'},{...assessment,title:'Affordability Assessment'}]});
   }
-  const api={reportPdf,combinedReport,wrap,filename:reportFilename};
+  const api={reportPdf,combinedReport,clientReport,wrap,filename:reportFilename};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PropertyPdf=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

@@ -145,7 +145,7 @@
     renderLoanComparison();
   }
   function renderAmortisation(){const r=lastResult;if(!r?.actualEntered||!r.option.valid){$('amortTable').innerHTML='<p class="small muted">Enter a valid loan and quoted interest rate to see the schedule.</p>';return;}$('amortTable').innerHTML=`<p class="small muted">${r.schedule.rows.length} monthly payments. Fixed illustrative rate ${M.n(state.settings.actualRate).toFixed(2)}%; the final payment may differ slightly due to rounding.</p><div class="aff-table-wrap schedule-scroll"><table><caption>Monthly amortisation schedule — ${money(r.loan)} over ${tenure(r.option.months)}</caption><thead><tr><th>Month</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th></tr></thead><tbody>${r.schedule.rows.map(row=>`<tr><td>${row.month}</td><td>${money(row.payment,2)}</td><td>${money(row.principal,2)}</td><td>${money(row.interest,2)}</td><td>${money(row.balance,2)}</td></tr>`).join('')}</tbody><tfoot><tr><th>Total</th><td>${money(r.schedule.totalPaid,2)}</td><td>${money(r.schedule.principalTotal,2)}</td><td>${money(r.schedule.interestTotal,2)}</td><td>${money(r.schedule.rows.at(-1)?.balance||0,2)}</td></tr></tfoot></table></div>`;}
-  const tabs=['planner','affordability','others'];
+  const tabs=['planner','affordability','others','clientReport'];
   function showTab(tab){active=tabs.includes(tab)?tab:'planner';for(const value of tabs){const selected=value===active;$(value+'View').hidden=!selected;$(value+'Tab').setAttribute('aria-selected',String(selected));$(value+'Tab').tabIndex=selected?0:-1;}if(active==='affordability'){importPlannerDetails();syncSettings();renderResults();persist();}if(active==='planner')shareAssessmentDetails();document.dispatchEvent(new CustomEvent('estate:tab-changed',{detail:active}));}
   function reportData(){
     const r=M.assess(state);if(!r?.option.valid)return;const groups=[];
@@ -219,7 +219,13 @@
   $('exportAffPdf').addEventListener('click',exportAssessment);
   for(const tab of tabs){$(tab+'Tab').addEventListener('click',()=>showTab(tab));$(tab+'Tab').addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const index=tabs.indexOf(tab),next=e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(index+(e.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length];showTab(next);$(next+'Tab').focus();}});}
   document.addEventListener('estate:show-tab',e=>showTab(e.detail));
-  window.EstateAffordability={startFresh(){state=M.simplifyState(M.defaults());state.skipPlannerPrefill=true;plannerLoanSeen={};$('amortisation').open=false;$('comparisonAmortisation').open=false;renderApplicants();syncSettings();renderResults();persist();},shareName(name,previous){if(!state.name||state.name===previous){state.name=String(name).slice(0,80);$('affName').value=state.name;persist();}},getReportData:reportData,getReportName:()=>state.name,getState:()=>M.cleanState(state),setState(raw){state=M.simplifyState(raw);state.settings.term='standard';state.settings.maxMaturity='65';renderApplicants();syncSettings();renderResults();persist();}};
+  window.EstateAffordability={
+    getClientMortgage(){
+      const settings=state.settings;
+      const months=settings.comparisonYears===''?lastResult.option.months:Math.round(Number(settings.comparisonYears)*12);
+      return {months,rateOne:settings.actualRate,rateTwo:settings.comparisonRateTwo};
+    },
+    startFresh(){state=M.simplifyState(M.defaults());state.skipPlannerPrefill=true;plannerLoanSeen={};$('amortisation').open=false;$('comparisonAmortisation').open=false;renderApplicants();syncSettings();renderResults();persist();},shareName(name,previous){if(!state.name||state.name===previous){state.name=String(name).slice(0,80);$('affName').value=state.name;persist();}},getReportData:reportData,getReportName:()=>state.name,getState:()=>M.cleanState(state),setState(raw){state=M.simplifyState(raw);state.settings.term='standard';state.settings.maxMaturity='65';renderApplicants();syncSettings();renderResults();persist();}};
   setInterval(()=>{if(state.settings.asOfAuto!==false&&state.settings.asOf!==M.today()){state.settings.asOf=M.today();$('affDate').value=state.settings.asOf;renderResults();persist();}},60000);
   renderApplicants();syncSettings();renderResults();
 })();

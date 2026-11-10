@@ -9,12 +9,14 @@
   <link rel="stylesheet" href="styles.css?v=20261028-1">
   <link rel="stylesheet" href="theme-blue.css?v=20261028-2">
   <link rel="stylesheet" href="affordability.css?v=20261110-1">
-  <script src="model.js?v=20261110-1" defer></script><script src="affordability-model.js?v=20261110-1" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=20261028-6" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=20261110-1" defer></script>
-  <script src="affordability.js?v=20261110-1" defer></script>
+  <script src="model.js?v=20261110-1" defer></script><script src="affordability-model.js?v=20261110-1" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=client-1" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=client-1" defer></script>
+  <script src="affordability.js?v=client-1" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-5">
   <script src="others.js?v=20261028-9" defer></script>
   <script src="combined-report.js?v=20261028-6" defer></script>
   <script src="workspace-fresh.js?v=20261028-9" defer></script>
+  <link rel="stylesheet" href="client-report.css?v=1">
+  <script src="client-report.js?v=1" defer></script>
 </head>
 <body>
   <a class="skip" href="#workspace">Skip to calculator</a>
@@ -31,6 +33,7 @@
       <button id="plannerTab" role="tab" aria-selected="true" aria-controls="plannerView">Property Planner</button>
       <button id="affordabilityTab" role="tab" aria-selected="false" aria-controls="affordabilityView" tabindex="-1">Affordability Assessment</button>
       <button id="othersTab" role="tab" aria-selected="false" aria-controls="othersView" tabindex="-1">Others</button>
+      <button id="clientReportTab" role="tab" aria-selected="false" aria-controls="clientReportView" tabindex="-1">Client Report</button>
     </div>
     <div id="plannerView" role="tabpanel" aria-labelledby="plannerTab">
     <section class="scenario-bar" aria-label="Choose your property scenario">
@@ -125,6 +128,31 @@
       </div>
       <section class="form-section lease-working"><span class="eyebrow">03 / YOUR CALCULATION</span><h3>The formula, made clear.</h3><p class="lease-formula">((Remaining lease − 20) ÷ (95 − youngest age − 20)) × current LTV limit</p><p id="ltvWorking"></p><p id="ltvLoanWorking"></p></section>
       <section class="aff-sources"><span class="eyebrow">LEASE ASSUMPTIONS &amp; SCOPE</span><p>Built year is an estimate of lease commencement, which may differ from the actual lease start. The default original lease is 99 years and may be edited. If the lease reaches age 95, the current LTV applies without pro-rating. A remaining lease of 20 years or less gives 0% under this formula. The calculation uses the unrounded ratio for the maximum loan.</p><p>This tool implements the supplied formula as a planning estimate. HDB lease-based loan limits and CPF usage rules are related but are separate from bank-loan assessments. Actual financing also depends on the lower price/valuation, age, tenure, income, lender credit assessment and eligibility; this tool's maximum loan is simply property price × applied pro-rated LTV.</p><div class="source-links"><a href="https://www.hdb.gov.sg/buying-a-flat/flat-grant-and-loan-eligibility/housing-loan/housing-loan-from-hdb" target="_blank" rel="noopener">HDB housing-loan guidance ↗</a><a href="https://www.cpf.gov.sg/service/article/how-much-cpf-savings-can-i-use-to-buy-a-property-if-its-lease-does-not-cover-the-youngest-buyer-to-age-95" target="_blank" rel="noopener">CPF age-95 lease guidance ↗</a></div></section>
+    </section>
+    <section id="clientReportView" role="tabpanel" aria-labelledby="clientReportTab" hidden>
+      <div class="assessment-intro">
+        <div><span class="eyebrow">ESTATE BASICS / CLIENT REPORT</span><h2>Prepare a purchase report</h2>
+          <p>Bring in your calculator figures, review the assumptions, then download a one-page PDF to share.</p></div>
+      </div>
+      <div class="client-report-workspace">
+        <section class="form-section">
+          <h3>Report details</h3>
+          <div class="aff-actions">
+            <button type="button" class="button light" id="importClientPurchase">Use Property Planner figures</button>
+            <button type="button" class="button light" id="importClientMortgage">Use affordability rates and tenure</button>
+          </div>
+          <p id="clientImportStatus" class="small muted" role="status"></p>
+          <form id="clientReportForm"></form>
+        </section>
+        <div>
+          <div class="client-preview-actions">
+            <h3>PDF preview</h3>
+            <button type="button" id="exportClientReport" class="button dark">Download client PDF ↓</button>
+          </div>
+          <p id="clientReportStatus" class="small muted" role="status"></p>
+          <article id="clientReportPreview" aria-label="Client report preview"></article>
+        </div>
+      </div>
     </section>
   </main>
   <footer><a class="brand footer-brand" href="./"><span class="brand-mark">EB</span><span>ESTATE BASICS<small>PROPERTY PLANNING</small></span></a><p>A little clarity for your next move.</p><span>Your private property planning workspace</span></footer>
