@@ -23,7 +23,7 @@
 .client-preview-columns h4 { margin: 0; background: #eef4fd; padding: 8px; }
 .client-purchase-rows, .client-mortgage { margin: 8px 0; }
 .client-purchase-rows > div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 4px; border-bottom: 1px solid #ebf0f7; }
-.client-purchase-rows dd { margin: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.client-purchase-rows dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .client-emphasis { font-weight: 700; }
 .client-alert dt { color: #9a3141; }
 .client-mortgage div + div { margin-top: 8px; }

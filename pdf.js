@@ -111,7 +111,8 @@
     }
     function right(value,x,y,bold){
       const width=[...ascii(value)].reduce((sum,ch)=>sum+(/[0-9$]/.test(ch)?5.56:ch===','||ch==='.'?2.78:5.56),0);
-      text(value,x-width,y,10,bold?'F2':'F1');
+      const size=value.length>27?8.5:10;
+      text(value,x-width*size/10,y,size,bold?'F2':'F1');
     }
     box(0,496,842,99,navy);
     text('ESTATE BASICS  /  PRIVATE CLIENT REPORT',39,568,9,'F2','0.75 0.85 1');
@@ -127,9 +128,10 @@
     });
     box(39,377,470,24,pale);
     text('PURCHASE & FUNDING',50,385,10,'F2',blue);
+    const rowSpacing=Math.min(15,195/Math.max(data.purchase.length-1,1));
     data.purchase.forEach(({label,value,bold,alert},i)=>{
-      const y=361-i*15;
-      if(i%2===0)box(39,y-4,470,14,'0.976 0.983 0.996');
+      const y=361-i*rowSpacing;
+      if(i%2===0)box(39,y-3,470,rowSpacing-1,'0.976 0.983 0.996');
       text(label,50,y,9,bold?'F2':'F1',alert?red:navy);
       right(value,498,y,bold);
     });
@@ -153,6 +155,7 @@
     for(const line of wrap(data.notes,92).slice(0,2)){
       if(line){text(line,40,y,8,'F1',navy);y-=10;}
     }
+    if(data.downpaymentNote){text(data.downpaymentNote,40,y,8,'F1',muted);y-=10;}
     text('Planning estimate in SGD. Financing, CPF use and stamp duties are subject to confirmation.',40,y,8,'F1',muted);
     text('Rates are illustrative and held constant over the stated term. Review actual terms with your lender.',40,y-10,8,'F1',muted);
     return encodePages([ops.join('\n')],842,595,navy,muted);

@@ -39,8 +39,19 @@
       buyLegal:plain('legal'), buyMisc:plain('misc'), buyOverride:plain('agent'),
       buyCommissionOn:d.agent !== '', absdRate:plain('absd')
     });
-    const cashDown = d.financing === 'Bank loan' ? buy.basis*.05 : 0;
-    const priceBalance = Math.max(0,buy.price-buy.loanUsed-cashDown-buy.cov);
+    const bankLoan = d.financing === 'Bank loan';
+    const hasLoan = d.financing !== 'No loan';
+    const priceLoan = buy.price*.75;
+    const valuationLoan = buy.valuation*.75;
+    const loanDifference = priceLoan-valuationLoan;
+    const downpayment = buy.price*.20;
+    // Allocate eligible funds to the 20% line first, within the valuation-based limit.
+    const eligibleDownpayment = buy.basis*.20;
+    const grantForDownpayment = Math.min(buy.grantUsed,eligibleDownpayment);
+    const cpfForDownpayment = Math.min(buy.cpfUsed,eligibleDownpayment-grantForDownpayment);
+    const cashForDownpayment = downpayment-cpfForDownpayment-grantForDownpayment;
+    const downpaymentSplit = money(cashForDownpayment)+' cash + '+money(cpfForDownpayment)+' CPF'
+      +(grantForDownpayment>0?' + '+money(grantForDownpayment)+' grant':'');
     const months = Math.round(Number(d.years)*12);
     const rates = [d.rateOne,d.rateTwo];
     const row = (label,value,bold=false,alert=false) => ({label,value:money(value),bold,alert});
@@ -58,11 +69,18 @@
       purchase:[
         row('Purchase price',buy.price,true),
         row(d.valuation === '' ? 'Valuation assumed equal to purchase price' : 'Indicative valuation',buy.valuation,false,buy.cov>0),
-        ...(d.financing === 'No loan' ? [] : [row('Loan ceiling at 75% of lower value',buy.maxLoan)]),
+        ...(hasLoan ? [
+          row('75% loan on purchase price',priceLoan),
+          row('75% loan on valuation',valuationLoan),
+          row('Loan difference (price less valuation)',loanDifference,true,loanDifference>0)
+        ] : []),
+        ...(bankLoan ? [
+          {label:'20% downpayment (cash / CPF)',value:downpaymentSplit,bold:true},
+          row('5% cash downpayment',buy.price*.05,true)
+        ] : []),
+        ...(hasLoan && buy.maxLoan>buy.loanUsed ? [row('Additional loan shortfall',buy.maxLoan-buy.loanUsed)] : []),
         row('Price to fund after loan',buy.price-buy.loanUsed,true),
-        ...(d.financing === 'Bank loan' ? [row('Includes minimum bank cash downpayment',cashDown)] : []),
-        ...(buy.cov > 0 ? [row('Includes cash over valuation',buy.cov,false,true)] : []),
-        ...(cashDown || buy.cov ? [row('Remaining price balance (cash or CPF)',priceBalance)] : []),
+        ...(buy.cov > 0 ? [row('Cash over valuation (included above)',buy.cov,false,true)] : []),
         row('Buyer’s Stamp Duty',buy.bsd),
         row('ABSD ('+percent.format(Number(d.absd))+'%)',buy.absd),
         row('Total stamp duty',buy.stampDutyTotal,true),
@@ -71,6 +89,9 @@
         row('Agent service fee',buy.fee),
         ...(buy.grantUsed > 0 ? [row('CPF housing grants applied',buy.grantUsed)] : [])
       ],
+      downpaymentNote: bankLoan
+        ? 'The 20% and 5% lines use the purchase price. Cash over valuation is included in the funding total.'
+        : '',
       tenure: !buy.loanUsed ? 'No mortgage payment' : months > 0
         ? 'Tenure: '+Math.floor(months/12)+' years'+(months%12?' '+months%12+' months':'')
         : 'Tenure: not entered',
@@ -141,6 +162,7 @@
       ${data.cashCheck ? '<p>'+esc(data.cashCheck)+'</p>' : ''}</section></div>
       <dl class="client-highlights client-totals">${pairs(data.totals)}</dl>
       ${data.notes ? '<p class="client-prepared">'+esc(data.notes)+'</p>' : ''}
+      ${data.downpaymentNote ? '<p class="client-preview-footer">'+esc(data.downpaymentNote)+'</p>' : ''}
       <p class="client-preview-footer">Planning estimate in SGD. Financing, CPF use and stamp duties are subject to confirmation. Rates are illustrative.</p>`;
   }
   function update(event){
