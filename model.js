@@ -49,7 +49,8 @@
       const loanUsed=loan-paydown, cov=Math.max(price-valuation,0), cashDown=loanType==='Bank loan'?basis*.05:0;
       const bsd=stampDuty(stampBasis),absd=stampBasis*n(d.absdRate)/100,legal=n(d.buyLegal),misc=n(d.buyMisc);
       const fee=commission(price,d.buyRate,d.buyCommissionOn,d.buyOverride,d.buyCommissionGst!==false);
-      const requirement=price-loanUsed+bsd+absd+legal+misc+fee;
+      const stampDutyTotal=bsd+absd;
+      const requirement=price-loanUsed+stampDutyTotal+legal+misc+fee;
       const cashOnly=cov+cashDown+misc+fee;
       const cpfEligible=Math.max(requirement-cashOnly,0);
       const grantUsed=isHdb?Math.min(n(d.buyGrant),cpfEligible):0;
@@ -58,7 +59,7 @@
       const loanGap=loanType==='No loan'?0:Math.max(price*.75-valuation*.75,0);
       const downRows=loanType==='No loan'?[row('Purchase without a loan',price,'guide')]:loanType==='HDB loan'?
         [row('25% downpayment by cash / CPF',basis*.25,'guide')]:[row('20% downpayment by cash / CPF',basis*.20,'guide'),row('5% cash downpayment',cashDown,'guide')];
-      buy={price,valuation,basis,loan,maxLoan,loanUsed,paydown,cov,loanGap,bsd,absd,fee,requirement,grantUsed,cpfUsed,cashOnly,cashNeeded,
+      buy={price,valuation,basis,loan,maxLoan,loanUsed,paydown,cov,loanGap,bsd,absd,stampDutyTotal,fee,requirement,grantUsed,cpfUsed,cashOnly,cashNeeded,
         rows:[row('Purchase price',price),row('Valuation / market value',valuation),...downRows,row('Cash-over-valuation (cash only)',cov,'guide'),
           row('Maximum loan at 75% of lower price / valuation',maxLoan,'guide'),row('Loan used before paydown',-loan),
           ...(paydownApplicable?[row('Second HDB loan proceeds paydown',paydown),row('Net loan after paydown',-loanUsed,'guide')]:[]),

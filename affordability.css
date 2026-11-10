@@ -27,3 +27,20 @@
 @media(max-width:560px){.property-summary-lines>div{gap:12px;padding:14px 0;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}.property-summary-lines dt{font-size:11px}.property-summary-lines dd{font-size:13px}.property-summary-lines .key{padding:16px 10px;margin:0 -10px}.property-summary-lines .key dd{font-size:19px}.summary-assessment-status{font-size:11px;padding:13px}}
 
 .assessment-notes-field{grid-column:1/-1}.intro-actions{display:flex;align-items:center;gap:18px}.intro-actions .button{white-space:nowrap}@media(max-width:700px){.intro-actions{flex-direction:column;gap:12px;align-items:end}.intro-actions .button,#othersStartFresh{font-size:11px;padding:12px 14px;white-space:nowrap}}
+
+
+.loan-calculator-content { margin: 0 20px 20px; }
+.loan-calculator-content > button { margin-top: 16px; }
+#affordabilityView .loan-comparison-table { min-width: 0; }
+#affordabilityView .loan-comparison-table th,
+#affordabilityView .loan-comparison-table td { white-space: normal; vertical-align: top; }
+#affordabilityView .loan-comparison-table small { display: block; line-height: 1.6; }
+.loan-comparison-wrap { margin-bottom: 12px; }
+#comparisonAmortisation { margin: 12px 0 0; }
+#comparisonSchedule { padding: 0 12px 12px; }
+@media(max-width:560px) {
+  .loan-calculator-content { margin: 0 8px 8px; padding: 12px; }
+  #comparisonSchedule { padding: 0 4px 4px; }
+  #affordabilityView .loan-comparison-table th,
+  #affordabilityView .loan-comparison-table td { padding: 8px 6px; font-size: 11px; }
+}

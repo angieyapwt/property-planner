@@ -8,9 +8,9 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23132648'/%3E%3Cpath d='M14 33L32 17l18 16M20 29v20h24V29M29 49V36h6v13' fill='none' stroke='%239ab9e9' stroke-width='3'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css?v=20261028-1">
   <link rel="stylesheet" href="theme-blue.css?v=20261028-2">
-  <link rel="stylesheet" href="affordability.css?v=20261028-9">
-  <script src="model.js?v=20261028-2" defer></script><script src="affordability-model.js?v=20261028-9" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=20261028-6" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=20261028-9" defer></script>
-  <script src="affordability.js?v=20261028-9" defer></script>
+  <link rel="stylesheet" href="affordability.css?v=20261110-1">
+  <script src="model.js?v=20261110-1" defer></script><script src="affordability-model.js?v=20261110-1" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=20261028-6" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=20261110-1" defer></script>
+  <script src="affordability.js?v=20261110-1" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-5">
   <script src="others.js?v=20261028-9" defer></script>
   <script src="combined-report.js?v=20261028-6" defer></script>
@@ -59,6 +59,30 @@
     <section id="affordabilityView" role="tabpanel" aria-labelledby="affordabilityTab" hidden>
       <div class="assessment-intro"><div><span class="eyebrow">SINGAPORE / BANK-LOAN PLANNING</span><h2>Know your borrowing range.</h2><p>Compare HDB, EC and condo financing with TDSR, MSR and age-based tenure limits.</p></div><div class="intro-actions"><span class="source-badge">Rules checked<br>28 OCT 2026</span><button type="button" class="button light" id="affStartFresh">Start fresh ↺</button></div></div>
       <div class="assessment-context"><label class="field"><span class="field-label">Assessment name</span><input id="affName" maxlength="80" placeholder="e.g. Our home affordability"></label><label class="field"><span class="field-label">Assessment date</span><input type="date" id="affDate"><span class="hint">Age follows this date. <button type="button" id="affToday" class="inline-button">Use today automatically</button></span></label></div>
+      <details id="loanCalculator" class="amortisation loan-calculator">
+        <summary>Loan Calculator <span>Compare monthly payments at two interest rates</span></summary>
+        <div class="form-section loan-calculator-content">
+          <div class="form-grid">
+            <label class="field"><span class="field-label">Loan amount (SGD)</span><input id="comparisonLoan" type="number" min="1" max="10000000000" step="any" inputmode="decimal"><span class="hint">Uses the assessed loan unless edited.</span></label>
+            <label class="field"><span class="field-label">Loan term (years)</span><input id="comparisonYears" type="number" min="0.0833" max="35" step="any" inputmode="decimal"><span class="hint">Uses the assessed tenure unless edited. Custom terms are rounded to the nearest month.</span></label>
+            <label class="field"><span class="field-label">Interest rate 1 (%)</span><input id="comparisonRateOne" type="number" min="0" max="25" step="any" inputmode="decimal"><span class="hint">Linked to the quoted rate in Lending Assumptions.</span></label>
+            <label class="field"><span class="field-label">Interest rate 2 (%)</span><input id="comparisonRateTwo" type="number" min="0" max="25" step="any" inputmode="decimal"><span class="hint">Enter another rate to compare.</span></label>
+          </div>
+          <button type="button" id="comparisonUseAssessment" class="button light">Use assessed loan and tenure</button>
+          <p id="comparisonStatus" class="small muted" role="status"></p>
+          <div class="aff-table-wrap loan-comparison-wrap">
+            <table class="loan-comparison-table" id="comparisonSummary">
+              <caption>Monthly repayment comparison</caption>
+              <thead><tr><th scope="col">Repayment</th><th scope="col" id="comparisonSummaryRateOne">Rate 1</th><th scope="col" id="comparisonSummaryRateTwo">Rate 2</th></tr></thead>
+              <tbody id="comparisonSummaryRows"></tbody>
+            </table>
+          </div>
+          <details id="comparisonAmortisation" class="amortisation">
+            <summary>View comparison amortisation table <span>Monthly payment, principal, interest and balance at each rate</span></summary>
+            <div id="comparisonSchedule"></div>
+          </details>
+        </div>
+      </details>
       <div class="aff-workspace"><div class="aff-input-column">
       <div class="applicant-heading"><div><span class="eyebrow">01 / THE APPLICANTS</span><h3>Income, age &amp; commitments</h3></div></div>
       <form id="affForm" novalidate><div id="applicants"></div></form>

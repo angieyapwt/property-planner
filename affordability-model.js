@@ -8,7 +8,7 @@
   function dateParts(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;const p=s.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2]));return d.getUTCFullYear()===p[0]&&d.getUTCMonth()===p[1]-1&&d.getUTCDate()===p[2]?p:null;}
   function ageFromDob(dob,asOf=today()){const b=dateParts(dob),d=dateParts(asOf);if(!b||!d||dob>asOf)return null;return d[0]-b[0]-(d[1]<b[1]||(d[1]===b[1]&&d[2]<b[2])?1:0);}
   function applicant(){return {name:'',dob:'',age:'',ageAuto:true,income:'',incomeType:'fixed',annual:'',annualType:'variable',cpfProfile:'full',frsMet:false,oa:'',oaAuto:true,car:'',card:'',other:'',housing:''};}
-  function defaults(){return {version:1,workspaceVersion:2,skipPlannerPrefill:false,name:'',notes:'',applicants:[applicant()],settings:{asOf:today(),selection:'all',property:'hdb',ecType:'new',stressRate:'4',thereafterRate:'',actualRate:'',maxMaturity:'65',existingLoans:'0',standardYears:'',extendedYears:'',term:'standard',loan:''},targets:{hdb:{price:'',valuation:'',loan:''},ec:{price:'',valuation:'',loan:''},condo:{price:'',valuation:'',loan:''}}};}
+  function defaults(){return {version:1,workspaceVersion:2,skipPlannerPrefill:false,name:'',notes:'',applicants:[applicant()],settings:{asOf:today(),selection:'all',property:'hdb',ecType:'new',stressRate:'4',thereafterRate:'',actualRate:'',maxMaturity:'65',existingLoans:'0',standardYears:'',extendedYears:'',term:'standard',loan:'',comparisonLoan:'',comparisonYears:'',comparisonRateTwo:''},targets:{hdb:{price:'',valuation:'',loan:''},ec:{price:'',valuation:'',loan:''},condo:{price:'',valuation:'',loan:''}}};}
   function cleanState(raw){
     const state=defaults();if(!raw||typeof raw!=='object')return state;
     state.workspaceVersion=raw.workspaceVersion===2?2:1;state.skipPlannerPrefill=raw.skipPlannerPrefill===true;
@@ -16,6 +16,12 @@
     if(Array.isArray(raw.applicants)&&raw.applicants.length)state.applicants=raw.applicants.slice(0,8).map(r=>{const a=applicant();if(!r||typeof r!=='object')return a;for(const k of Object.keys(a)){if(r[k]===undefined)continue;if(['ageAuto','oaAuto','frsMet'].includes(k))a[k]=r[k]===true;else if(k==='name')a[k]=String(r[k]).slice(0,60);else if(k==='dob')a[k]=dateParts(r[k])?r[k]:'';else if(k==='cpfProfile')a[k]=['full','none','manual'].includes(r[k])?r[k]:'full';else if(k.endsWith('Type'))a[k]=r[k]==='variable'?'variable':'fixed';else a[k]=has(r[k])?String(Math.min(n(r[k]),1e10)):'';}return a;});
     const s=raw.settings||{};
     for(const k of ['stressRate','thereafterRate','actualRate','maxMaturity','existingLoans','standardYears','extendedYears','loan'])if(s[k]!==undefined)state.settings[k]=has(s[k])?String(Math.min(n(s[k]),k==='loan'?1e10:100)):'';
+    const comparisonLimits={comparisonLoan:1e10,comparisonYears:35,comparisonRateTwo:25};
+    for(const [key,max] of Object.entries(comparisonLimits)){
+      const value=String(s[key]??'').trim();
+      const amount=Number(value);
+      if(value&&Number.isFinite(amount)&&amount>=0&&amount<=max)state.settings[key]=value;
+    }
     state.settings.asOfAuto=s.asOfAuto!==false;
     if(!state.settings.asOfAuto&&dateParts(s.asOf))state.settings.asOf=s.asOf;
     if(['hdb','ec','condo'].includes(s.property))state.settings.property=s.property;
