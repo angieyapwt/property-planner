@@ -45,6 +45,8 @@
     const lowValuation = buy.valuation < buy.price;
     const priceLoan = buy.price*.75;
     const valuationLoan = buy.valuation*.75;
+    const topUpOperator = Math.round(priceLoan)-Math.round(valuationLoan) === Math.round(buy.loanGap) ? ' = ' : ' ≈ ';
+    const topUpCalculation = money(priceLoan)+' − '+money(valuationLoan)+topUpOperator+money(buy.loanGap);
     const share = bankLoan ? .20 : .25;
     const eligibleDownpayment = buy.basis*share;
     const grantForDownpayment = Math.min(buy.grantUsed,eligibleDownpayment);
@@ -63,6 +65,7 @@
     const cpfUsed = splitEdited && !splitError
       ? splitCpf+Math.min(buy.cpfUsed-defaultCpf,Math.max(Number(d.oa)-splitCpf,0))
       : buy.cpfUsed;
+    // The purchase requirement already uses the valuation-capped loan.
     const cashNeeded = buy.requirement-buy.grantUsed-cpfUsed;
     const balance = (fund,available,used) => {
       if (available === '') return {label:fund+' available',value:'Not entered',tone:''};
@@ -91,7 +94,7 @@
         ...(hasLoan ? [row('75% loan on purchase price',priceLoan)] : []),
         ...(hasLoan && lowValuation ? [
           row('75% loan on valuation',valuationLoan,false,true),
-          row('Cash top-up from lower valuation',buy.loanGap,true,true)
+          {label:'Cash top-up from lower valuation',value:topUpCalculation,bold:true,alert:true}
         ] : []),
         ...(hasLoan ? [{label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',value:downpaymentSplit,bold:true}] : []),
         ...(bankLoan ? [row('5% Cash',buy.price*.05,true)] : []),

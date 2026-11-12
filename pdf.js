@@ -88,7 +88,7 @@
     return encodePages(pages,595,842,navy,muted);
   }
   function encodePages(pages,width,height,navy,muted){
-    const objects=['<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>','<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>'];
+    const objects=['<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding << /BaseEncoding /WinAnsiEncoding /Differences [128 /minus /approxequal] >> >>','<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>'];
     const kids=[];
     pages.forEach((stream,i)=>{
       const pageId=objects.length+1,streamId=pageId+1;kids.push(pageId+' 0 R');
@@ -107,7 +107,10 @@
     const ops=[];
     function box(x,y,w,h,color){ops.push(color+' rg '+[x,y,w,h].join(' ')+' re f');}
     function text(value,x,y,size=10,font='F1',color=navy){
-      ops.push('BT /'+font+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+escape(value)+') Tj ET');
+      const encoded = font==='F2'
+        ? String(value).split(/([−≈])/).map(part=>part==='−'?'\\200':part==='≈'?'\\201':escape(part)).join('')
+        : escape(value);
+      ops.push('BT /'+font+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+encoded+') Tj ET');
     }
     function right(value,x,y,bold,color){
       const width=[...ascii(value)].reduce((sum,ch)=>sum+(/[0-9$]/.test(ch)?5.56:ch===','||ch==='.'?2.78:5.56),0);
