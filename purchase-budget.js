@@ -98,10 +98,10 @@
     return {
       state, year, target, timing, now:format(rows[0].price), benchmark:format(benchmark.price),
       propertyType:propertyNames[state.propertyType], targetToday:target ? signedBalance(rows[0].targetBalance) : null,
-      yearLabel:period(year.year), 
+      yearLabel:period(year.year), affordablePrice:format(year.price),
       projectionHeaders:['When','Monthly CPF OA','Accumulated CPF OA','Cash savings','Max purchase price',...(target ? ['Target cash balance'] : [])],
       projectionRows:rows.map(row => ({
-        label:period(row.year), values:[row.monthlyOa,row.oa,row.cash,row.price].map(format),
+        year:row.year, label:period(row.year), values:[row.monthlyOa,row.oa,row.cash,row.price].map(format),
         balance:target ? signedBalance(row.targetBalance) : null, key:row.year === 0
       })),
       costHeaders:['Amount','Loan benchmark','Affordable · '+period(year.year),...(target ? ['At target price'] : [])],
@@ -149,17 +149,22 @@
   }
 
   function render() {
-    const data = reportData(state, Number($('purchaseBudgetYear').value));
+    const selectedYear = Number($('purchaseBudgetYear').value);
+    const data = reportData(state, selectedYear);
     $('purchaseBudgetNow').textContent = data.now;
     $('purchaseBudgetBenchmark').textContent = data.benchmark;
     showBalance($('purchaseBudgetTarget'), data.targetToday);
     $('purchaseBudgetTiming').textContent = data.timing;
     $('purchaseBudgetTargetHeading').hidden = !data.target;
     $('purchaseBudgetProjection').innerHTML = data.projectionRows.map(row =>
-      `<tr${row.key ? ' class="budget-key"' : ''}><th scope="row">${row.label}</th>` +
+      `<tr data-budget-year="${row.year}" class="${row.year === selectedYear ? 'budget-selected' : ''}"><th scope="row"><button type="button" class="budget-year-button" aria-label="Show purchase budget for ${row.label}" aria-pressed="${row.year === selectedYear}">${row.label}</button></th>` +
       row.values.map((value,index) => index === 3 ? `<td><strong>${value}</strong></td>` : `<td>${value}</td>`).join('') +
       (row.balance ? `<td class="${row.balance.tone}">${row.balance.text}</td>` : '') + '</tr>').join('');
 
+    $('purchaseBudgetCostsTitle').textContent = 'Purchase cost breakdown · ' + data.yearLabel;
+    $('purchaseBudgetYearPrice').textContent = data.affordablePrice;
+    $('purchaseBudgetYearTargetTile').hidden = !data.targetForYear;
+    showBalance($('purchaseBudgetYearTarget'), data.targetForYear);
     $('purchaseBudgetCostHead').innerHTML = data.costHeaders.map(label => `<th scope="col">${label}</th>`).join('');
     $('purchaseBudgetCosts').innerHTML = data.costRows.map(row =>
       `<tr${row.key ? ' class="budget-key"' : ''}><th scope="row">${row.label}</th>` +
@@ -223,6 +228,15 @@
   }
 
   $('purchaseBudgetYear').addEventListener('change', render);
+  $('purchaseBudgetProjection').addEventListener('click', event => {
+    const row = event.target.closest('tr[data-budget-year]');
+    if (!row) return;
+    $('purchaseBudgetYear').value = row.dataset.budgetYear;
+    render();
+    const heading = $('purchaseBudgetCostsTitle');
+    heading.focus({preventScroll:true});
+    heading.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+  });
   $('purchaseBudgetImport').addEventListener('click', () => importAssessment(state.propertyType));
   document.addEventListener('estate:tab-changed', event => {
     if (event.detail !== 'purchaseBudget' || !linked) return;

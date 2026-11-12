@@ -13,6 +13,11 @@
 .budget-table th:first-child { text-align: left; }
 .budget-table thead, .budget-table .budget-key { background: #eaf1fc; color: #234975; }
 .budget-table tbody th { font-weight: 500; }
+#purchaseBudgetProjection tr { cursor: pointer; }
+#purchaseBudgetProjection tr:hover, #purchaseBudgetProjection tr:focus-within, #purchaseBudgetProjection .budget-selected { background: #eaf1fc; }
+.budget-year-button { border: 0; background: transparent; padding: 3px 0; color: #234975; text-decoration: underline; text-underline-offset: 3px; }
+.budget-selected .budget-year-button { font-weight: 700; }
+#purchaseBudgetCostsTitle { scroll-margin-top: 24px; }
 #purchaseBudgetView .budget-gap { color: #a63c4c; }
 #purchaseBudgetView .budget-funded { color: #166044; font-weight: 600; }
 @media (max-width: 560px) {
