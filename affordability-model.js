@@ -34,10 +34,10 @@
   function simplifyState(raw){
     const state=cleanState(raw),s=state.settings;
     if(state.workspaceVersion!==2){s.maxMaturity='65';s.term='standard';}
-    if(s.term==='extended')s.loan='';s.term='standard';
+    s.loan='';s.term='standard';
     state.workspaceVersion=2;s.existingLoans='0';s.thereafterRate='';s.ecType='new';
     for(const a of state.applicants){a.annualType='variable';a.cpfProfile='full';a.frsMet=false;a.housing='';}
-    for(const target of Object.values(state.targets)){target.price='';target.valuation='';}
+    for(const target of Object.values(state.targets)){target.price='';target.valuation='';target.loan='';}
     if(s.selection==='all'||s.selection==='pair')s.selection=state.applicants.length>1?'pair':'0';
     if(!selectedIndices(state).length||(/^\d+$/.test(s.selection)&&+s.selection>=state.applicants.length))s.selection='0';
     return state;

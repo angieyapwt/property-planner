@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="styles.css?v=20261028-1">
   <link rel="stylesheet" href="theme-blue.css?v=20261028-2">
   <link rel="stylesheet" href="affordability.css?v=20261110-1">
-  <script src="model.js?v=client-4" defer></script><script src="affordability-model.js?v=20261110-1" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=client-7" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=client-4" defer></script>
-  <script src="affordability.js?v=assessment-2" defer></script>
+  <script src="model.js?v=client-4" defer></script><script src="affordability-model.js?v=assessment-3" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=client-7" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=client-4" defer></script>
+  <script src="affordability.js?v=assessment-3" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-5">
   <script src="others.js?v=20261028-9" defer></script>
   <script src="combined-report.js?v=20261028-6" defer></script>
@@ -94,7 +94,7 @@
         <div class="field selection-field"><span class="field-label">Applicants to assess</span><div id="affSelection" class="applicant-choices" role="group" aria-label="Applicants to assess — lending assumptions"></div></div>
         <label class="field"><span class="field-label">Assessment interest rate (%)</span><input type="number" min="0" max="25" step="0.1" id="affStress" value="4"><span class="hint">Default 4%. Uses the higher of the 4% floor, this rate and the quoted rate. Check any higher thereafter rate with your bank.</span></label>
         <div class="field"><span class="field-label">Maximum age at loan maturity</span><output class="calculated-output">65</output><span class="hint">The assessment ends by age 65.</span></div>
-        <label class="field"><span class="field-label">Loan amount for illustration</span><div class="money-wrap"><span aria-hidden="true">$</span><input id="affLoan" inputmode="decimal" placeholder="Income-based maximum" aria-describedby="affLoanHint affIllustratedPrice"></div><span class="hint" id="affLoanHint">Defaults to your income-based maximum. Edit it to estimate repayments on a specific loan.</span><span class="hint" id="affIllustratedPrice" role="status"></span></label>
+        <div class="field"><label class="field-label" for="affLoan">Max Loan used for repayments</label><output id="affLoan" class="calculated-output">—</output></div>
         <label class="field"><span class="field-label">Loan tenure (years, optional)</span><input type="number" min="0" max="35" step="0.5" id="affStandardYears"><span class="hint">Shorten the main loan tenure. It always ends by age 65.</span></label>
         <label class="field"><span class="field-label">Quoted / illustrative interest rate (%)</span><input type="number" min="0" max="25" step="0.01" id="affActual" placeholder="Enter the rate to simulate"><span class="hint">Repayments assume this rate stays constant. Separate from the assessment rate.</span></label>
         <label class="field assessment-notes-field"><span class="field-label">Assessment notes</span><textarea id="affNotes" rows="2" maxlength="4000" placeholder="Assumptions or details to revisit"></textarea></label>

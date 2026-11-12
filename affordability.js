@@ -14,7 +14,7 @@
       : {loan:'—',price:'—'};
   }
   const pct=v=>(v*100).toFixed(1)+'%';
-  let state=M.defaults(),active='planner',lastResult,plannerLoanSeen={};
+  let state=M.defaults(),active='planner',lastResult;
   try{const saved=localStorage.getItem(KEY);if(saved)state=M.cleanState(JSON.parse(saved));}catch{}
   state=M.simplifyState(state);state.settings.term='standard';state.settings.maxMaturity='65';
   const field=(i,key,label,hint='',type='text')=>`<label class="field"><span class="field-label">${label}</span>${type==='money'?`<div class="money-wrap"><span aria-hidden="true">$</span><input inputmode="decimal" maxlength="18" data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${M.has(state.applicants[i][key])?whole(state.applicants[i][key]):''}"></div>`:`<input type="${type==='dob'?'text':type}" ${type==='number'?'min="0" max="100" step="1"':''} ${type==='dob'?'data-dob-input inputmode="numeric" maxlength="11" placeholder="DDMMYYYY" autocomplete="bday"':''} data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${esc(type==='dob'?DobInput.format(state.applicants[i][key]):state.applicants[i][key])}" ${key==='name'?'maxlength="60"':''}>`}${hint?`<span class="hint">${hint}</span>`:''}</label>`;
@@ -46,16 +46,11 @@
     $('app-'+i+'-gross').textContent=money(data.gross,2);
     $('oa-mode-'+i).textContent=a.oaAuto===false?'Manual OA override.':'Auto: 2026 CPF tables, ordinary wages only.';
   });}
-  const settingIds={stressRate:'affStress',standardYears:'affStandardYears',loan:'affLoan',actualRate:'affActual',comparisonLoan:'comparisonLoan',comparisonYears:'comparisonYears',comparisonRateTwo:'comparisonRateTwo'};
-  function syncSettings(){for(const [key,id]of Object.entries(settingIds))$(id).value=key==='loan'&&M.has(state.settings[key])?whole(state.settings[key]):state.settings[key];$('affName').value=state.name;$('affNotes').value=state.notes;$('affDate').value=state.settings.asOf;renderSelection();}
-  function importPlannerDetails(){
+  const settingIds={stressRate:'affStress',standardYears:'affStandardYears',actualRate:'affActual',comparisonLoan:'comparisonLoan',comparisonYears:'comparisonYears',comparisonRateTwo:'comparisonRateTwo'};
+  function syncSettings(){for(const [key,id]of Object.entries(settingIds))$(id).value=state.settings[key];$('affName').value=state.name;$('affNotes').value=state.notes;$('affDate').value=state.settings.asOf;renderSelection();}
+  function importPlannerName(){
     const bridge=window.EstatePlannerBridge;if(!bridge||state.skipPlannerPrefill)return;
     if(!state.name)state.name=bridge.getReportName()||'';
-    const type=state.settings.property,input=bridge.getInputs(type),value=M.has(input.buyLoan)?String(M.n(input.buyLoan)):'';
-    if(!input._assessmentSeeded&&input.buyLoanAuto===false&&value&&value!==plannerLoanSeen[type]){
-      if(!M.has(state.settings.loan)||state.settings.loan===plannerLoanSeen[type]){state.settings.loan=value;state.targets[type].loan=value;}
-      plannerLoanSeen[type]=value;
-    }
   }
   function shareAssessmentDetails(){const r=M.assess(state);if(!r.within)return;window.EstatePlannerBridge?.seedAssessment({type:state.settings.property,loan:r.loan,price:M.propertyBudget(r.loan,r.option.ltv).price,name:state.name});}
   function metric(label,value,hint=''){return `<article class="aff-metric"><span>${label}</span><strong>${value}</strong>${hint?`<small>${hint}</small>`:''}</article>`;}
@@ -135,12 +130,10 @@
     const propertyLabel={hdb:'HDB',ec:'EC',condo:'Condo'}[state.settings.property];
     $('affDetailTitle').textContent=propertyLabel+' Property Assessment Summary';
     if(document.activeElement!==$('affStandardYears'))$('affStandardYears').value=r.option.months?number(r.option.months/12):'';
-    if(!M.has(state.settings.loan))$('affLoan').value=r.option.valid?whole(r.option.maxLoan):'';
     const budget=M.propertyBudget(r.loan,r.option.ltv);
     const maximums=incomeMaximums(r.property.standard);
-    const customLoan=M.has(state.settings.loan);
-    $('affIllustratedPrice').textContent=customLoan&&r.option.valid?'Property price at this loan amount: '+money(budget.price)+'.':'';
-    const status=!r.option.valid?'Enter income and age, then select an available tenure.':r.within?'Within the modelled debt-servicing and LTV limits.':'The simulated loan exceeds at least one modelled lending limit.';
+    $('affLoan').textContent=maximums.loan;
+    const status=!r.option.valid?'Enter income and age, then select an available tenure.':r.within?'Within the modelled debt-servicing and LTV limits.':'The assessment exceeds a modelled lending limit.';
     const applicants=r.indices.map(i=>'Applicant '+(i+1)+(state.applicants[i].name?' · '+state.applicants[i].name:'')).join(' + ');
     const rows=[
       ['Property',propertyLabel],['Applicants assessed',applicants],
@@ -148,30 +141,29 @@
       ['Max Property Price',maximums.price,'key'],
       ['Loan tenure',tenure(r.option.months)],['LTV limit',(r.option.ltv*100).toFixed(0)+'%'],
       ['Quoted / illustrative interest rate',r.actualEntered?number(M.n(state.settings.actualRate))+'%':'Not entered'],
-      [customLoan?'Illustrated downpayment before purchase costs':'Downpayment before purchase costs',r.option.valid?money(budget.equity):'—'],
+      ['Downpayment before purchase costs',r.option.valid?money(budget.equity):'—'],
       ['Monthly instalment',r.actualEntered?money(r.schedule.payment,2):'—','key'],
       ['First-month principal',r.actualEntered?money(r.schedule.rows[0]?.principal||0,2):'—'],
       ['First-month interest',r.actualEntered?money(r.schedule.rows[0]?.interest||0,2):'—'],
       ['Estimated monthly OA',money(r.oa,2)],
       ['Monthly cash gap after estimated OA',r.actualEntered?money(r.cashMonthly,2):'—']
     ];
-    $('repaymentSummary').innerHTML=`<p class="summary-assessment-status ${r.within?'within':'outside'}" role="status">${esc(status)}</p><dl class="property-summary-lines">${rows.map(([label,value,kind])=>`<div class="${kind||''}"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl><p class="small muted">${customLoan?'Repayments and downpayment use the loan amount for illustration. ':''}Property price = loan ÷ LTV, assuming price equals valuation. Downpayments exclude stamp duties and other purchase costs.</p>`;
+    $('repaymentSummary').innerHTML=`<p class="summary-assessment-status ${r.within?'within':'outside'}" role="status">${esc(status)}</p><dl class="property-summary-lines">${rows.map(([label,value,kind])=>`<div class="${kind||''}"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl><p class="small muted">Property price = loan ÷ LTV, assuming price equals valuation. Downpayments exclude stamp duties and other purchase costs.</p>`;
     $('exportCombinedAssessment').disabled=!r.option.valid||!window.EstatePlannerBridge?.getReportData();$('affCombinedHint').textContent=$('exportCombinedAssessment').disabled?'Complete the assessment and enter a Property Planner calculation to enable combined export.':'Combined export is available: both current calculations will be included.';
     $('applyAffLoan').disabled=!r.within||!r.option.valid;$('exportAffPdf').disabled=!r.option.valid;if($('amortisation').open)renderAmortisation();
     renderLoanComparison();
   }
   function renderAmortisation(){const r=lastResult;if(!r?.actualEntered||!r.option.valid){$('amortTable').innerHTML='<p class="small muted">Enter a valid loan and quoted interest rate to see the schedule.</p>';return;}$('amortTable').innerHTML=`<p class="small muted">${r.schedule.rows.length} monthly payments. Fixed illustrative rate ${M.n(state.settings.actualRate).toFixed(2)}%; the final payment may differ slightly due to rounding.</p><div class="aff-table-wrap schedule-scroll"><table><caption>Monthly amortisation schedule — ${money(r.loan)} over ${tenure(r.option.months)}</caption><thead><tr><th>Month</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Balance</th></tr></thead><tbody>${r.schedule.rows.map(row=>`<tr><td>${row.month}</td><td>${money(row.payment,2)}</td><td>${money(row.principal,2)}</td><td>${money(row.interest,2)}</td><td>${money(row.balance,2)}</td></tr>`).join('')}</tbody><tfoot><tr><th>Total</th><td>${money(r.schedule.totalPaid,2)}</td><td>${money(r.schedule.principalTotal,2)}</td><td>${money(r.schedule.interestTotal,2)}</td><td>${money(r.schedule.rows.at(-1)?.balance||0,2)}</td></tr></tfoot></table></div>`;}
   const tabs=['planner','affordability','others','clientReport'];
-  function showTab(tab){active=tabs.includes(tab)?tab:'planner';for(const value of tabs){const selected=value===active;$(value+'View').hidden=!selected;$(value+'Tab').setAttribute('aria-selected',String(selected));$(value+'Tab').tabIndex=selected?0:-1;}if(active==='affordability'){importPlannerDetails();syncSettings();renderResults();persist();}if(active==='planner')shareAssessmentDetails();document.dispatchEvent(new CustomEvent('estate:tab-changed',{detail:active}));}
+  function showTab(tab){active=tabs.includes(tab)?tab:'planner';for(const value of tabs){const selected=value===active;$(value+'View').hidden=!selected;$(value+'Tab').setAttribute('aria-selected',String(selected));$(value+'Tab').tabIndex=selected?0:-1;}if(active==='affordability'){importPlannerName();syncSettings();renderResults();persist();}if(active==='planner')shareAssessmentDetails();document.dispatchEvent(new CustomEvent('estate:tab-changed',{detail:active}));}
   function reportData(){
     const r=M.assess(state);if(!r?.option.valid)return;const groups=[];
     groups.push({title:'Selected borrowers & debt-service position',rows:[['Gross assessable monthly income',r.gross],['Existing monthly debts',r.debt],['Estimated monthly OA',r.oa]].map(([label,value])=>({label,amount:money(value,2)}))});
     groups.push({title:'Max Loan and Max Property Price / maturity by age 65',rows:['hdb','ec','condo'].flatMap(type=>{const o=r.outcomes[type].standard,label={hdb:'HDB',ec:'EC',condo:'Condo'}[type],maximums=incomeMaximums(o);return [{label:label+' Max Loan / '+tenure(o.months)+' / '+(o.ltv*100).toFixed(0)+'% LTV',amount:maximums.loan,bold:true},{label:label+' Max Property Price',amount:maximums.price}];})});
     const budget=M.propertyBudget(r.loan,r.option.ltv);
     const maximums=incomeMaximums(r.property.standard);
-    const customLoan=M.has(state.settings.loan);
-    groups.push({title:({hdb:'HDB',ec:'EC',condo:'Condo'}[state.settings.property])+' Property Assessment Summary',rows:[{label:'Max Loan',amount:maximums.loan,bold:true},{label:'Max Property Price at '+(r.option.ltv*100).toFixed(0)+'% LTV',amount:maximums.price,bold:true},{label:customLoan?'Illustrated downpayment before purchase costs':'Downpayment before purchase costs',amount:money(budget.equity)},{label:'Property type',amount:state.settings.property.toUpperCase()},...(r.actualEntered?[{label:'Quoted / illustrative rate',amount:M.n(state.settings.actualRate).toFixed(2)+'%'},{label:'Monthly instalment',amount:money(r.schedule.payment,2),bold:true},{label:'First-month principal',amount:money(r.schedule.rows[0]?.principal||0,2)},{label:'First-month interest',amount:money(r.schedule.rows[0]?.interest||0,2)},{label:'Monthly cash gap after estimated OA',amount:money(r.cashMonthly,2)}]:[])]});
-    const inputs=[{label:'Assessment date',value:state.settings.asOf},{label:'Loan amount used for repayment illustration',value:money(r.loan)},{label:'Selected applicants',value:r.indices.map(i=>'Applicant '+(i+1)).join(', ')},{label:'Income-Weighted Average Age used (rounded up)',value:String(r.age)},{label:'Assumed maximum maturity age',value:state.settings.maxMaturity},{label:'Housing loan assumption',value:'First housing loan; no existing housing instalments'}];
+    groups.push({title:({hdb:'HDB',ec:'EC',condo:'Condo'}[state.settings.property])+' Property Assessment Summary',rows:[{label:'Max Loan',amount:maximums.loan,bold:true},{label:'Max Property Price at '+(r.option.ltv*100).toFixed(0)+'% LTV',amount:maximums.price,bold:true},{label:'Downpayment before purchase costs',amount:money(budget.equity)},{label:'Property type',amount:state.settings.property.toUpperCase()},...(r.actualEntered?[{label:'Quoted / illustrative rate',amount:M.n(state.settings.actualRate).toFixed(2)+'%'},{label:'Monthly instalment',amount:money(r.schedule.payment,2),bold:true},{label:'First-month principal',amount:money(r.schedule.rows[0]?.principal||0,2)},{label:'First-month interest',amount:money(r.schedule.rows[0]?.interest||0,2)},{label:'Monthly cash gap after estimated OA',amount:money(r.cashMonthly,2)}]:[])]});
+    const inputs=[{label:'Assessment date',value:state.settings.asOf},{label:'Max Loan used for repayments',value:maximums.loan},{label:'Selected applicants',value:r.indices.map(i=>'Applicant '+(i+1)).join(', ')},{label:'Income-Weighted Average Age used (rounded up)',value:String(r.age)},{label:'Assumed maximum maturity age',value:state.settings.maxMaturity},{label:'Housing loan assumption',value:'First housing loan; no existing housing instalments'}];
     state.applicants.forEach((a,i)=>{const v=M.applicantValues(a,state.settings.asOf);for(const [label,value]of [['Name',a.name||'Not entered'],['DOB',DobInput.format(a.dob)||'Not entered'],['Age',v.age??'Not entered'],['Monthly income',money(M.n(a.income),2)],['Monthly income type',a.incomeType],['Other annual income',money(M.n(a.annual),2)],['Monthly CPF OA',money(v.cpf,2)],['Car loan',money(M.n(a.car),2)],['Credit-card monthly obligation',money(M.n(a.card),2)],['Other loan',money(M.n(a.other),2)]])inputs.push({label:'Applicant '+(i+1)+' / '+label,value:String(value)});});
     const name=state.name||window.EstatePlannerBridge?.getName()||'Affordability Assessment';return {name,scenario:'Affordability Assessment / '+state.settings.property.toUpperCase(),date:new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore'}),primaryLabel:'Max Loan / selected property assessment',primary:maximums.loan,groups,inputs,notes:state.notes,assumptions:['Bank-loan planning only. TDSR 55%; applicable MSR 30%. First housing loan assumed. Other annual income is always recognised at 70%; variable monthly income is also recognised at 70%. EC assumes MSR applies.','Planning assumption: income-weighted age is rounded up to the next whole year before tenure and LTV calculations. Confirm lender rounding policy. Standard LTV requires maturity by 65 and tenure up to 25 years for HDB / 30 years for private property. Longer loans use reduced LTV tiers.','Maximum bank-loan tenure: 30 years for HDB, 35 years for private property. The chosen maturity age is an editable bank-policy assumption, not a universal MAS cap.','2026 CPF private-sector employee tables and $8,000 monthly ordinary-wage ceiling used. OA excludes bonus CPF and remains subject to CPF usage limits.','Not an approval or HDB/EC eligibility assessment. Subject to lender verification, documentation, remaining lease, income and ownership rules.','Sources checked 28 Oct 2026: MAS macroprudential policies; MAS MSR and TDSR rules; CPF contribution and allocation rates 2026.']};
   }
@@ -185,7 +177,7 @@
   $('affForm').addEventListener('click',e=>{if(e.target.dataset.resetAge!==undefined){const a=state.applicants[+e.target.dataset.resetAge];a.ageAuto=true;renderResults();persist();}if(e.target.dataset.resetOa!==undefined){const a=state.applicants[+e.target.dataset.resetOa];a.oaAuto=true;renderResults();persist();}if(e.target.dataset.remove!==undefined){state.applicants.splice(+e.target.dataset.remove,1);renderApplicants();renderResults();persist();}});
   $('addApplicant').addEventListener('click',()=>{if(state.applicants.length<2){state.applicants.push(M.applicant());state.settings.selection='pair';renderApplicants();renderResults();persist();}});
   $('affForm').addEventListener('focusout',e=>{if(e.target.inputMode==='decimal'&&e.target.dataset.field){const a=state.applicants[+e.target.dataset.app],key=e.target.dataset.field;if(key==='oa'&&a.oaAuto!==false)return;e.target.value=M.has(a[key])?whole(a[key]):'';}});
-  function chooseProperty(type,navigate=false){state.targets[state.settings.property].loan=state.settings.loan;state.settings.property=type;state.settings.term='standard';state.settings.loan=state.targets[type].loan||'';importPlannerDetails();$('affLoan').value=M.has(state.settings.loan)?whole(state.settings.loan):'';renderResults();persist();if(navigate){$('affDetail').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});$('affDetailTitle').focus({preventScroll:true});}}
+  function chooseProperty(type,navigate=false){state.settings.property=type;state.settings.term='standard';renderResults();persist();if(navigate){$('affDetail').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});$('affDetailTitle').focus({preventScroll:true});}}
   function readQuotedRate(input){
     if(input.value==='')return '';
     return input.valueAsNumber.toLocaleString('en-US',{useGrouping:false,maximumFractionDigits:12});
@@ -194,15 +186,13 @@
     const input=$(id);
     input.addEventListener('input',()=>{
       state.settings[key]=key==='actualRate'?readQuotedRate(input):input.value;
-      if(key==='loan')state.targets[state.settings.property].loan=state.settings.loan;
       renderResults();
       persist();
     });
   }
-  for(const id of ['affSelection'])$(id).addEventListener('click',e=>{const button=e.target.closest('[data-select-applicants]');if(!button||button.disabled)return;state.settings.selection=button.dataset.selectApplicants;state.settings.loan='';for(const t of Object.values(state.targets))t.loan='';renderResults();persist();});
+  $('affSelection').addEventListener('click',e=>{const button=e.target.closest('[data-select-applicants]');if(!button||button.disabled)return;state.settings.selection=button.dataset.selectApplicants;renderResults();persist();});
   $('affComparison').addEventListener('click',e=>{const button=e.target.closest('[data-assess-property]');if(button)chooseProperty(button.dataset.assessProperty,true);});
   $('affComparison').addEventListener('keydown',e=>{if(e.target.tagName==='TR'&&['Enter',' '].includes(e.key)){e.preventDefault();chooseProperty(e.target.dataset.assessProperty,true);}});
-  $('affLoan').addEventListener('focusout',()=>{$('affLoan').value=M.has(state.settings.loan)?whole(state.settings.loan):lastResult.option.valid?whole(lastResult.option.maxLoan):'';});
   $('affStandardYears').addEventListener('focusout',()=>{if(!M.has(state.settings.standardYears))$('affStandardYears').value=lastResult.option.months?number(lastResult.option.months/12):'';});
   $('affDate').addEventListener('change',()=>{if(M.dateParts($('affDate').value)){state.settings.asOf=$('affDate').value;state.settings.asOfAuto=false;renderResults();persist();}});
   $('affToday').addEventListener('click',()=>{state.settings.asOf=M.today();state.settings.asOfAuto=true;$('affDate').value=state.settings.asOf;renderResults();persist();});
@@ -242,7 +232,7 @@
       const {loan,months,rates:[rateOne,rateTwo]}=loanComparisonInputs();
       return {loan,months,rateOne,rateTwo,loanEntered:state.settings.comparisonLoan!==''};
     },
-    startFresh(){state=M.simplifyState(M.defaults());state.skipPlannerPrefill=true;plannerLoanSeen={};$('amortisation').open=false;$('comparisonAmortisation').open=false;renderApplicants();syncSettings();renderResults();persist();},shareName(name,previous){if(!state.name||state.name===previous){state.name=String(name).slice(0,80);$('affName').value=state.name;persist();}},getReportData:reportData,getReportName:()=>state.name,getState:()=>M.cleanState(state),setState(raw){state=M.simplifyState(raw);state.settings.term='standard';state.settings.maxMaturity='65';renderApplicants();syncSettings();renderResults();persist();}};
+    startFresh(){state=M.simplifyState(M.defaults());state.skipPlannerPrefill=true;$('amortisation').open=false;$('comparisonAmortisation').open=false;renderApplicants();syncSettings();renderResults();persist();},shareName(name,previous){if(!state.name||state.name===previous){state.name=String(name).slice(0,80);$('affName').value=state.name;persist();}},getReportData:reportData,getReportName:()=>state.name,getState:()=>M.cleanState(state),setState(raw){state=M.simplifyState(raw);state.settings.term='standard';state.settings.maxMaturity='65';renderApplicants();syncSettings();renderResults();persist();}};
   setInterval(()=>{if(state.settings.asOfAuto!==false&&state.settings.asOf!==M.today()){state.settings.asOf=M.today();$('affDate').value=state.settings.asOf;renderResults();persist();}},60000);
   renderApplicants();syncSettings();renderResults();
 })();
