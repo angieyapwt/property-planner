@@ -111,12 +111,43 @@
     };
   }
 
-  if (node) { module.exports = {clean,build}; return; }
+  function calculatorFields(purchase, mortgage){
+    const fields = {};
+    if (purchase) {
+      const {buy,inputs,type,name} = purchase;
+      const optional = key => property.has(inputs[key]) ? property.n(inputs[key]) : '';
+      Object.assign(fields,{
+        type, client:name, financing:inputs.loanType, price:buy.price, valuation:optional('buyValuation'),
+        loan:buy.loanUsed, oa:optional('buyCpf'), cash:optional('cashSavings'),
+        grant:type==='hdb' ? optional('buyGrant') : '', absd:property.n(inputs.absdRate),
+        legal:optional('buyLegal'), misc:optional('buyMisc'), agent:buy.fee
+      });
+    }
+    if (mortgage) {
+      const useCalculatorLoan = !purchase ||
+        (mortgage.loanEntered && purchase.inputs.loanType === 'Bank loan' && purchase.inputs.buyLoanAuto !== false);
+      if (useCalculatorLoan && mortgage.loan > 0 && mortgage.loan <= 1e10) fields.loan = mortgage.loan;
+      if (mortgage.months > 0 && mortgage.months <= 420) fields.years = mortgage.months / 12;
+      for (const key of ['rateOne','rateTwo']) {
+        const rate = mortgage[key];
+        if (rate !== '' && Number(rate) >= 0 && Number(rate) <= 25) fields[key] = rate;
+      }
+    }
+    return fields;
+  }
+
+  if (node) { module.exports = {clean,build,calculatorFields}; return; }
   const $ = id => document.getElementById(id);
   const esc = value => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const key = 'estate-basics-client-report-v1';
-  let state = {...defaults};
-  try { state = clean(JSON.parse(localStorage.getItem(key) || '{}')); } catch {}
+  let draft = {...defaults};
+  const edited = new Set();
+  try {
+    const saved = JSON.parse(localStorage.getItem(key) || '{}');
+    draft = clean(saved.fields ?? saved);
+    for (const name of saved.edited ?? []) if (Object.hasOwn(defaults,name)) edited.add(name);
+  } catch {}
+  let state = {...draft};
   const amountField = (field,label) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" type="text" inputmode="numeric" autocomplete="off"></label>`;
   const numeric = (field,label,max) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" type="number" min="${field==='valuation'?1:0}" max="${max}" step="any" inputmode="decimal"></label>`;
   const text = (field,label,max) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" maxlength="${max}"></label>`;
@@ -136,7 +167,7 @@
   </div>`;
   const field = name => form.elements.namedItem(name);
   function persist(){
-    try { localStorage.setItem(key,JSON.stringify(clean(state))); } catch {}
+    try { localStorage.setItem(key,JSON.stringify({fields:clean(draft),edited:[...edited]})); } catch {}
   }
   function sync(){
     for (const [name,value] of Object.entries(state)) {
@@ -176,10 +207,14 @@
       const amount = Number(value);
       const valid = value === '' || /^\d+(?:\.\d*)?$/.test(value) && amount >= minimum && amount <= 1e10;
       input.setCustomValidity(valid ? '' : 'Enter a valid dollar amount.');
-      if (valid) state[input.name] = value === '' ? '' : String(Math.round(amount));
+      if (!valid) { render(); return; }
+      state[input.name] = value === '' ? '' : String(Math.round(amount));
     } else {
+      if (!input.validity.valid) { render(); return; }
       state[input.name] = input.value;
     }
+    draft[input.name] = state[input.name];
+    edited.add(input.name);
     if (state.type !== 'hdb' && state.financing === 'HDB loan') {
       state.financing = 'Bank loan';
       field('financing').value = 'Bank loan';
@@ -196,31 +231,31 @@
     }
   });
   form.addEventListener('submit',event=>event.preventDefault());
-  $('importClientPurchase').addEventListener('click',()=>{
-    const source = root.EstatePlannerBridge.getClientPurchase();
-    if (!source) {
-      $('clientImportStatus').textContent = 'Enter a purchase price in Property Planner first.';
-      return;
+  function refreshFromCalculators(restore = false){
+    const purchase = root.EstatePlannerBridge.getClientPurchase();
+    const mortgage = root.EstateAffordability.getClientMortgage();
+    const fields = calculatorFields(purchase,mortgage);
+    if (!fields.client) delete fields.client;
+    const available = Object.keys(fields);
+    if (restore) {
+      for (const name of available) {
+        edited.delete(name);
+        draft[name] = defaults[name];
+      }
+      persist();
     }
-    const {buy,inputs,type,name} = source;
-    state = clean({...state,type,client:state.client||name,financing:inputs.loanType,
-      price:buy.price,valuation:inputs.buyValuation,loan:buy.loanUsed,oa:inputs.buyCpf,
-      grant:type==='hdb'?inputs.buyGrant:'',absd:inputs.absdRate,legal:inputs.buyLegal,misc:inputs.buyMisc,
-      agent:buy.fee,cash:state.cash||inputs.cashSavings});
-    sync(); persist(); render();
-    $('clientImportStatus').textContent = 'Purchase figures copied. Review cash available and CPF before sharing.';
+    state = clean({...draft,...Object.fromEntries(Object.entries(fields).filter(([name])=>!edited.has(name)))});
+    $('refreshClientFigures').disabled = !available.length;
+    $('clientImportStatus').textContent = restore ? 'Calculator figures restored.'
+      : available.some(name=>edited.has(name)) ? 'Calculator figures refreshed. Your report edits were kept.'
+      : available.length ? 'Available calculator figures filled in automatically.' : '';
+    sync();
+    render();
+  }
+  document.addEventListener('estate:tab-changed',event=>{
+    if (event.detail === 'clientReport') refreshFromCalculators();
   });
-  $('importClientMortgage').addEventListener('click',()=>{
-    const source = root.EstateAffordability.getClientMortgage();
-    if (!source.months && source.rateOne==='' && source.rateTwo==='') {
-      $('clientImportStatus').textContent = 'Enter a tenure or rates in Affordability Assessment first.';
-      return;
-    }
-    state = clean({...state,years:source.months ? source.months/12 : state.years,
-      rateOne:source.rateOne || state.rateOne,rateTwo:source.rateTwo || state.rateTwo});
-    sync(); persist(); render();
-    $('clientImportStatus').textContent = 'Available tenure and rates copied. Repayments use the loan shown in this report.';
-  });
+  $('refreshClientFigures').addEventListener('click',()=>refreshFromCalculators(true));
   $('exportClientReport').addEventListener('click',()=>{
     const now = new Date(), data = build(state,now);
     if (!data.valid) return;

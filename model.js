@@ -64,7 +64,8 @@
           row('Maximum loan at 75% of lower price / valuation',maxLoan,'guide'),row('Loan used before paydown',-loan),
           ...(paydownApplicable?[row('Second HDB loan proceeds paydown',paydown),row('Net loan after paydown',-loanUsed,'guide')]:[]),
           row('Cash top up for Loan',loanGap,'guide'),...(maxLoan>loan?[row('Additional approved-loan shortfall',maxLoan-loan,'guide')]:[]),
-          row('Stamp duty basis',stampBasis,'guide'),row('Buyer stamp duty',bsd),row('ABSD ('+n(d.absdRate)+'%)',absd),row('Legal fee',legal),
+          row('Stamp duty basis',stampBasis,'guide'),row('Buyer stamp duty',bsd),row('ABSD ('+n(d.absdRate)+'%)',absd),
+          row('Total Stamp Duty',stampDutyTotal,'subtotal'),row('Legal fee',legal),
           row('Miscellaneous fee (cash only)',misc),row(d.buyCommissionGst===false?'Agent commission (without GST, cash only)':'Commission including GST (cash only)',fee),row('Purchase requirement before CPF / grants',requirement,'subtotal'),
           row('Housing grants used',-grantUsed),row('CPF OA used',-cpfUsed),row('Cash needed before sale proceeds / savings',cashNeeded,'total')]};
     }

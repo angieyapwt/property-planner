@@ -54,11 +54,15 @@
   }
   function shareAssessmentDetails(){const r=M.assess(state);if(!r.within)return;window.EstatePlannerBridge?.seedAssessment({type:state.settings.property,loan:r.loan,price:M.propertyBudget(r.loan,r.option.ltv).price,name:state.name});}
   function metric(label,value,hint=''){return `<article class="aff-metric"><span>${label}</span><strong>${value}</strong>${hint?`<small>${hint}</small>`:''}</article>`;}
-  function renderLoanComparison(){
+  function loanComparisonInputs(){
     const settings=state.settings;
     const loan=settings.comparisonLoan===''?(lastResult.option.valid?lastResult.loan:0):Number(settings.comparisonLoan);
     const months=settings.comparisonYears===''?lastResult.option.months:Math.round(Number(settings.comparisonYears)*12);
-    const rates=[settings.actualRate,settings.comparisonRateTwo];
+    return {loan,months,rates:[settings.actualRate,settings.comparisonRateTwo]};
+  }
+  function renderLoanComparison(){
+    const settings=state.settings;
+    const {loan,months,rates}=loanComparisonInputs();
 
     if(document.activeElement!==$('comparisonLoan')){
       $('comparisonLoan').value=settings.comparisonLoan||(loan>0?String(loan):'');
@@ -221,9 +225,8 @@
   document.addEventListener('estate:show-tab',e=>showTab(e.detail));
   window.EstateAffordability={
     getClientMortgage(){
-      const settings=state.settings;
-      const months=settings.comparisonYears===''?lastResult.option.months:Math.round(Number(settings.comparisonYears)*12);
-      return {months,rateOne:settings.actualRate,rateTwo:settings.comparisonRateTwo};
+      const {loan,months,rates:[rateOne,rateTwo]}=loanComparisonInputs();
+      return {loan,months,rateOne,rateTwo,loanEntered:state.settings.comparisonLoan!==''};
     },
     startFresh(){state=M.simplifyState(M.defaults());state.skipPlannerPrefill=true;plannerLoanSeen={};$('amortisation').open=false;$('comparisonAmortisation').open=false;renderApplicants();syncSettings();renderResults();persist();},shareName(name,previous){if(!state.name||state.name===previous){state.name=String(name).slice(0,80);$('affName').value=state.name;persist();}},getReportData:reportData,getReportName:()=>state.name,getState:()=>M.cleanState(state),setState(raw){state=M.simplifyState(raw);state.settings.term='standard';state.settings.maxMaturity='65';renderApplicants();syncSettings();renderResults();persist();}};
   setInterval(()=>{if(state.settings.asOfAuto!==false&&state.settings.asOf!==M.today()){state.settings.asOf=M.today();$('affDate').value=state.settings.asOf;renderResults();persist();}},60000);

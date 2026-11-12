@@ -9,14 +9,14 @@
   <link rel="stylesheet" href="styles.css?v=20261028-1">
   <link rel="stylesheet" href="theme-blue.css?v=20261028-2">
   <link rel="stylesheet" href="affordability.css?v=20261110-1">
-  <script src="model.js?v=20261110-1" defer></script><script src="affordability-model.js?v=20261110-1" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=client-3" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=client-3" defer></script>
-  <script src="affordability.js?v=client-1" defer></script>
+  <script src="model.js?v=client-4" defer></script><script src="affordability-model.js?v=20261110-1" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=client-3" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=client-4" defer></script>
+  <script src="affordability.js?v=client-4" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-5">
   <script src="others.js?v=20261028-9" defer></script>
   <script src="combined-report.js?v=20261028-6" defer></script>
   <script src="workspace-fresh.js?v=20261028-9" defer></script>
   <link rel="stylesheet" href="client-report.css?v=3">
-  <script src="client-report.js?v=3" defer></script>
+  <script src="client-report.js?v=4" defer></script>
 </head>
 <body>
   <a class="skip" href="#workspace">Skip to calculator</a>
@@ -50,7 +50,6 @@
       <aside class="summary" aria-label="Calculation summary">
         <div class="summary-top"><span class="eyebrow">02 / THE BIG PICTURE</span><span class="live-pill">LIVE ESTIMATE</span></div>
         <p id="primaryLabel">Additional cash needed</p><div id="primary" class="primary">$0</div><p class="result-caption" id="resultCaption">Enter your figures to start planning.</p>
-        <div class="metric" id="stampDutySummary" hidden><span>Total Stamp Duty</span><strong id="stampDutySummaryAmount"></strong></div>
         <div class="summary-metrics" id="metrics"></div>
         <div class="allocation" id="allocation"></div>
         <div class="summary-actions"><button class="button gold" id="saveEstimate">Save estimate <span>↗</span></button><button class="button outline" id="exportPdf">Export PDF <span>↓</span></button><button type="button" class="button outline" title="Includes the current Property Planner and Affordability Assessment. Uses the Property Planner name, or assessment name if blank, and today’s Singapore date." id="exportCombinedPlanner">Export combined report <span>↓</span></button></div>
@@ -133,14 +132,13 @@
     <section id="clientReportView" role="tabpanel" aria-labelledby="clientReportTab" hidden>
       <div class="assessment-intro">
         <div><span class="eyebrow">ESTATE BASICS / CLIENT REPORT</span><h2>Prepare a purchase report</h2>
-          <p>Bring in your calculator figures, review the assumptions, then download a one-page PDF to share.</p></div>
+          <p>Your Property Planner and Loan Calculator figures fill in automatically. Edit any amount or either rate before downloading your PDF.</p></div>
       </div>
       <div class="client-report-workspace">
         <section class="form-section">
           <h3>Report details</h3>
           <div class="aff-actions">
-            <button type="button" class="button light" id="importClientPurchase">Use Property Planner figures</button>
-            <button type="button" class="button light" id="importClientMortgage">Use affordability rates and tenure</button>
+            <button type="button" class="button light" id="refreshClientFigures" disabled>Restore calculator figures</button>
           </div>
           <p id="clientImportStatus" class="small muted" role="status"></p>
           <form id="clientReportForm"></form>
