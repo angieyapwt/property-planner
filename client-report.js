@@ -42,7 +42,7 @@
     });
     const bankLoan = d.financing === 'Bank loan';
     const hasLoan = d.financing !== 'No loan';
-    const highValuation = buy.price > 0 && buy.valuation > buy.price;
+    const lowValuation = buy.valuation < buy.price;
     const priceLoan = buy.price*.75;
     const valuationLoan = buy.valuation*.75;
     const share = bankLoan ? .20 : .25;
@@ -87,11 +87,11 @@
       ],
       purchase:[
         row('PROPERTY PRICE',buy.price,true),
-        row(d.valuation === '' ? 'Valuation assumed equal to purchase price' : 'Indicative valuation',buy.valuation,false,highValuation),
+        row(d.valuation === '' ? 'Valuation assumed equal to purchase price' : 'Indicative valuation',buy.valuation,false,lowValuation),
         ...(hasLoan ? [row('75% loan on purchase price',priceLoan)] : []),
-        ...(hasLoan && highValuation ? [
+        ...(hasLoan && lowValuation ? [
           row('75% loan on valuation',valuationLoan,false,true),
-          {label:'Loan difference (in cash)',value:money(valuationLoan-priceLoan)+' difference / $0 cash',bold:true,alert:true}
+          row('Cash top-up from lower valuation',buy.loanGap,true,true)
         ] : []),
         ...(hasLoan ? [{label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',value:downpaymentSplit,bold:true}] : []),
         ...(bankLoan ? [row('5% Cash',buy.price*.05,true)] : []),
