@@ -10,7 +10,9 @@
   <link rel="stylesheet" href="theme-blue.css?v=20261028-2">
   <link rel="stylesheet" href="affordability.css?v=20261110-1">
   <script src="model.js?v=client-4" defer></script><script src="affordability-model.js?v=assessment-3" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=client-7" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=client-4" defer></script>
-  <script src="affordability.js?v=assessment-3" defer></script>
+  <script src="affordability.js?v=purchase-budget-1" defer></script>
+  <link rel="stylesheet" href="purchase-budget.css?v=1">
+  <script src="purchase-budget.js?v=1" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-5">
   <script src="others.js?v=20261028-9" defer></script>
   <script src="combined-report.js?v=20261028-6" defer></script>
@@ -32,6 +34,7 @@
     <div class="workspace-tabs" role="tablist" aria-label="Planning tools">
       <button id="plannerTab" role="tab" aria-selected="true" aria-controls="plannerView">Property Planner</button>
       <button id="affordabilityTab" role="tab" aria-selected="false" aria-controls="affordabilityView" tabindex="-1">Affordability Assessment</button>
+      <button id="purchaseBudgetTab" role="tab" aria-selected="false" aria-controls="purchaseBudgetView" tabindex="-1">Purchase Budget</button>
       <button id="othersTab" role="tab" aria-selected="false" aria-controls="othersView" tabindex="-1">Others</button>
       <button id="clientReportTab" role="tab" aria-selected="false" aria-controls="clientReportView" tabindex="-1">Client Report</button>
     </div>
@@ -107,6 +110,62 @@
         <details id="amortisation" class="amortisation"><summary>View amortisation table <span>Monthly principal, interest and remaining balance</span></summary><div id="amortTable"></div></details>
       </section></div></div>
       <section class="aff-sources"><span class="eyebrow">SOURCES &amp; SCOPE</span><p>This is a bank-loan planning estimate, not an approval or an HDB/EC eligibility assessment. It does not test citizenship, household eligibility, income ceilings, remaining lease, CPF withdrawal limits or a lender's full credit policy. Loan amounts are limited by both debt servicing and LTV. Property price is the selected loan divided by its LTV, assuming valuation equals price. It requires the displayed equity contribution and is not a complete cash-budget assessment. Cash downpayments exclude stamp duties, legal fees and other purchase costs.</p><p>Assessable income is monthly income + other annual income / 12. Other annual income is always recognised at 70%. Monthly income marked variable is also recognised at 70%; lenders may apply stricter treatment and require supporting documents. Joint age is weighted by gross assessable income and rounded up to a whole year for this planner’s tenure calculations. Enter credit-card monthly assessed repayments, not the outstanding balance or credit limit. This workspace assumes no existing housing loans. EC means a purchase subject to MSR; resale EC financing after MOP is outside this simplified assessment.</p><p>Automatic OA uses 2026 private-sector employee contribution and allocation tables for Singapore citizens / full-rate PRs, capped at $8,000 ordinary monthly wages. It excludes bonus CPF and assumes retirement contributions continue to RA from age 55. New age bands start in the month after the relevant birthday. Use a manual OA amount for other CPF profiles or years. OA contributions are not an assurance that CPF can fund the full mortgage.</p><div class="source-links"><a href="https://www.mas.gov.sg/publications/macroprudential-policies-in-singapore" target="_blank" rel="noopener">MAS: TDSR, MSR, LTV &amp; tenure ↗</a><a href="https://www.mas.gov.sg/regulation/explainers/new-housing-loans/msr-and-tdsr-rules" target="_blank" rel="noopener">MAS: debt-servicing rules ↗</a><a href="https://www.cpf.gov.sg/content/dam/web/employer/employer-obligations/documents/CPFcontributionratesfrom1Jan2026.pdf" target="_blank" rel="noopener">CPF contribution rates 2026 ↗</a><a href="https://www.cpf.gov.sg/content/dam/web/employer/employer-obligations/documents/CPFAllocationRatesfromJanuary2026.pdf" target="_blank" rel="noopener">CPF allocation rates 2026 ↗</a><a href="https://www.posb.com.sg/personal/articles/budget-debt/understanding-tdsr-and-borrowing" target="_blank" rel="noopener">Bank income and rate treatment ↗</a></div></section>
+    </section>
+    <section id="purchaseBudgetView" role="tabpanel" aria-labelledby="purchaseBudgetTab" hidden>
+      <div class="assessment-intro">
+        <div>
+          <h2>Purchase Budget</h2>
+          <p>See what your loan, cash and CPF OA can fund today and over the next 10 years.</p>
+        </div>
+      </div>
+      <section class="form-section" aria-labelledby="purchaseBudgetInputs">
+        <h3 id="purchaseBudgetInputs">Loan and savings</h3>
+        <form id="purchaseBudgetForm" class="form-grid">
+          <label class="field"><span class="field-label">Property type</span><select name="propertyType"><option value="private">Private residential</option><option value="hdb">HDB</option><option value="ec">Executive Condominium</option></select></label>
+          <label class="field"><span class="field-label">Max Loan (SGD)</span><input name="maxLoan" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal"></label>
+          <label class="field"><span class="field-label">Usable CPF OA today (SGD)</span><input name="oaBalance" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal"></label>
+          <label class="field"><span class="field-label">Cash savings available today (SGD)</span><input name="cashBalance" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal"></label>
+          <label class="field"><span class="field-label">Monthly CPF OA added (SGD)</span><input name="monthlyOa" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal"></label>
+          <label class="field"><span class="field-label">Monthly cash saved (SGD)</span><input name="monthlyCash" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal"></label>
+          <label class="field"><span class="field-label">Applicable ABSD rate (%)</span><input name="absdRate" type="number" min="0" max="100" step="0.01" inputmode="decimal"><span class="hint">Enter 0 if ABSD does not apply.</span></label>
+          <label class="field"><span class="field-label">Target purchase price (optional, SGD)</span><input name="targetPrice" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal"></label>
+        </form>
+        <div class="aff-actions">
+          <button type="button" class="button light" id="purchaseBudgetImport">Use Affordability figures</button>
+          <button type="button" class="button dark" id="purchaseBudgetSave">Save to device ↓</button>
+          <button type="button" class="button light" id="purchaseBudgetRestore">Restore saved budget</button>
+          <input type="file" id="purchaseBudgetFile" accept=".json,application/json" hidden>
+        </div>
+        <p id="purchaseBudgetStatus" class="small muted" role="status"></p>
+      </section>
+      <div class="aff-metrics budget-metrics" aria-live="polite">
+        <article class="aff-metric"><span>Max purchase price today</span><strong id="purchaseBudgetNow"></strong><small>After downpayment and purchase costs</small></article>
+        <article class="aff-metric"><span>Purchase price if Max Loan covers 75%</span><strong id="purchaseBudgetBenchmark"></strong><small>Loan benchmark before checking cash and CPF</small></article>
+        <article class="aff-metric"><span>Cash top-up for target today</span><strong id="purchaseBudgetTarget"></strong><small id="purchaseBudgetTiming"></small></article>
+      </div>
+      <div class="aff-table-wrap" tabindex="0" role="region" aria-label="Purchase budget projection">
+        <table class="budget-table">
+          <caption>Purchase budget from now to Year 10</caption>
+          <thead><tr><th scope="col">When</th><th scope="col">Monthly CPF OA</th><th scope="col">Accumulated CPF OA</th><th scope="col">Cash savings</th><th scope="col">Max purchase price</th><th scope="col" id="purchaseBudgetTargetHeading" hidden>Target cash top-up</th></tr></thead>
+          <tbody id="purchaseBudgetProjection"></tbody>
+        </table>
+      </div>
+      <section aria-labelledby="purchaseBudgetCostsTitle">
+        <div class="budget-cost-heading">
+          <h3 id="purchaseBudgetCostsTitle">Purchase cost breakdown</h3>
+          <label class="field"><span class="field-label">Show funding for</span><select id="purchaseBudgetYear"></select></label>
+        </div>
+        <div class="aff-table-wrap" tabindex="0" role="region" aria-label="Purchase cost breakdown">
+          <table class="budget-table">
+            <thead><tr id="purchaseBudgetCostHead"></tr></thead><tbody id="purchaseBudgetCosts"></tbody>
+          </table>
+        </div>
+      </section>
+      <div class="aff-sources">
+        <p>Assumes a first bank housing loan capped at 75% of the price, with valuation equal to price. The cash estimate includes at least 5% of the price plus agent and miscellaneous fees. Stamp duty may need to be paid in cash before CPF reimbursement.</p>
+        <p>Projections hold your Max Loan, monthly contributions and target price constant. Year 1 is after 12 months. Balances grow by the amounts entered each month, excluding CPF interest and investment returns.</p>
+        <div class="source-links"><a href="https://www.iras.gov.sg/quick-links/tax-rates/stamp-duty" target="_blank" rel="noopener">IRAS stamp duty rates</a><a href="https://www.cpf.gov.sg/service/article/which-property-related-fees-can-i-use-my-cpf-savings-for" target="_blank" rel="noopener">CPF rules for purchase fees</a><a href="https://www.moneysense.gov.sg/buying-a-property-how-much-can-you-afford/" target="_blank" rel="noopener">MoneySense bank loan limits</a></div>
+      </div>
     </section>
     <section id="othersView" role="tabpanel" aria-labelledby="othersTab" hidden>
       <div class="assessment-intro"><div><span class="eyebrow">OTHERS / LEASE &amp; FINANCING</span><h2>Check the lease. See the difference.</h2><p>Estimate the pro-rated LTV when the remaining lease does not cover the youngest buyer to age 95.</p></div><button type="button" class="button light" id="othersStartFresh">Start fresh ↺</button></div>

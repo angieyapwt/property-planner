@@ -1,0 +1,21 @@
+.workspace-tabs { flex-wrap: wrap; }
+#purchaseBudgetView .form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+#purchaseBudgetView .form-section h3, .budget-cost-heading h3 { font: 26px var(--serif); color: #234975; }
+#purchaseBudgetView .form-section h3 { margin: 0 0 18px; }
+#purchaseBudgetView .field-label { min-height: 0; }
+.budget-metrics { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.budget-cost-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 10px 22px; }
+.budget-cost-heading h3 { margin: 0; }
+.budget-cost-heading .field { min-width: 145px; }
+.budget-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.budget-table caption { padding: 14px 17px; text-align: left; color: #294a76; font-weight: 600; }
+.budget-table th, .budget-table td { padding: 12px 16px; border-bottom: 1px solid #e1e9f5; text-align: right; white-space: nowrap; }
+.budget-table th:first-child { text-align: left; }
+.budget-table thead, .budget-table .budget-key { background: #eaf1fc; color: #234975; }
+.budget-table tbody th { font-weight: 500; }
+.budget-table .budget-gap { color: #a63c4c; }
+.budget-table .budget-funded { color: #166044; font-weight: 600; }
+@media (max-width: 560px) {
+  .budget-table th, .budget-table td { padding: 10px; font-size: 12px; }
+  #purchaseBudgetView .form-section { padding: 18px; }
+}
