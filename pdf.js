@@ -170,6 +170,72 @@
     if(!planner||!assessment)throw new Error('Both calculations are required.');
     return reportPdf({name,date,documents:[{...planner,title:'Property Planner'},{...assessment,title:'Affordability Assessment'}]});
   }
-  const api={reportPdf,combinedReport,clientReport,wrap,filename:reportFilename};
+  function purchaseBudget(data, now = new Date()){
+    const navy='0.075 0.15 0.28', muted='0.36 0.44 0.55', blue='0.20 0.35 0.57';
+    const white='1 1 1', pale='0.93 0.96 0.995', stripe='0.975 0.982 0.995';
+    const red='0.66 0.20 0.27', green='0.08 0.37 0.25';
+    const date=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Singapore',day:'2-digit',month:'short',year:'numeric'}).format(now);
+    const pages=[];
+    let ops=[];
+    const box=(x,y,w,h,color)=>ops.push(color+' rg '+[x,y,w,h].join(' ')+' re f');
+    const text=(value,x,y,size=10,font='F1',color=navy)=>
+      ops.push('BT /'+font+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+escape(value)+') Tj ET');
+    const balanceColor=balance=>balance?.tone==='budget-gap'?red:green;
+    function header(title,subtitle){
+      ops=[];
+      box(0,497,842,98,navy);
+      text('ESTATE BASICS  /  PURCHASE PLANNING',40,566,9,'F2','0.75 0.85 1');
+      text(date,696,566,9,'F1',white);
+      text(title,40,534,26,'F3',white);
+      text(subtitle,40,513,10,'F1','0.80 0.88 1');
+    }
+    function cards(items){
+      const width=764/items.length;
+      items.forEach(([label,value,color],index)=>{
+        const x=39+width*index;
+        box(x,423,width-7,52,pale);
+        text(label.toUpperCase(),x+12,455,8,'F2',blue);
+        text(value,x+12,433,18,'F3',color);
+      });
+    }
+    function table(headers,rows,columns,emphasisColumn){
+      box(39,378,764,27,navy);
+      headers.forEach((label,i)=>text(label,columns[i],388,9,'F2',white));
+      rows.forEach((row,index)=>{
+        const y=378-index*22;
+        if(row.key || index%2===0) box(39,y-22,764,22,row.key?pale:stripe);
+        text(row.label,columns[0],y-15,10,row.key?'F2':'F1');
+        row.values.forEach((value,i)=>text(value,columns[i+1],y-15,10,row.key||i===emphasisColumn?'F2':'F1'));
+        if(row.balance)text(row.balance.text,columns.at(-1),y-15,10,'F2',balanceColor(row.balance));
+      });
+    }
+    header('Purchase Budget','10-year projection  /  '+data.propertyType);
+    cards([
+      ['Max purchase price today',data.now],['Price if Max Loan covers 75%',data.benchmark],
+      ...(data.targetToday?[['Target cash balance today',data.targetToday.text,balanceColor(data.targetToday)]]:[])
+    ]);
+    table(data.projectionHeaders,data.projectionRows,data.target?[51,145,275,414,549,680]:[51,157,319,489,644],3);
+    if(data.target){
+      text('Target purchase price  '+data.targetPrice+'  /  '+data.timing,40,114,10,'F2');
+      text('Negative amounts show cash top-up needed after CPF OA. Positive amounts show cash remaining.',40,95,9,'F1',muted);
+    }
+    text('Year 1 is after 12 months. Loan, monthly contributions and target price are held constant.',40,74,9,'F1',muted);
+    text('Projection excludes CPF interest and investment returns. All amounts are in SGD.',40,59,9,'F1',muted);
+    pages.push(ops.join('\n'));
+
+    header('Purchase Cost Breakdown',data.propertyType+'  /  Funding shown for '+data.yearLabel);
+    cards([
+      ['Max Loan',data.maxLoan],['CPF OA available',data.oa],['Cash savings available',data.cash],
+      ...(data.targetForYear?[['Target cash balance',data.targetForYear.text,balanceColor(data.targetForYear)]]:[])
+    ]);
+    table(data.costHeaders.map(label=>label.replace(' · ',' / ')),data.costRows,data.target?[51,335,505,680]:[51,389,625]);
+    if(data.noPurchase)text(data.noPurchase,40,112,9,'F2',muted);
+    text('Assumes a first bank loan at up to 75% of the price, with valuation equal to purchase price.',40,94,9,'F1',muted);
+    text('Cash requirement includes the minimum cash downpayment, agent fees and miscellaneous fees.',40,77,9,'F1',muted);
+    text('Stamp duty may need to be paid in cash before CPF reimbursement. All amounts are in SGD.',40,60,9,'F1',muted);
+    pages.push(ops.join('\n'));
+    return encodePages(pages,842,595,navy,muted);
+  }
+  const api={reportPdf,combinedReport,clientReport,purchaseBudget,wrap,filename:reportFilename};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PropertyPdf=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

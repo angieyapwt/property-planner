@@ -228,11 +228,13 @@
   for(const tab of tabs){$(tab+'Tab').addEventListener('click',()=>showTab(tab));$(tab+'Tab').addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const index=tabs.indexOf(tab),next=e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(index+(e.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length];showTab(next);$(next+'Tab').focus();}});}
   document.addEventListener('estate:show-tab',e=>showTab(e.detail));
   window.EstateAffordability={
-    getPurchaseBudgetInputs(){
-      if (!lastResult.option.valid) return null;
+    getPurchaseBudgetInputs(propertyType){
+      const type = propertyType === 'private' ? 'condo' : propertyType ?? state.settings.property;
+      const option = lastResult.outcomes[type]?.standard;
+      if (!option?.valid) return null;
       return {
-        propertyType: state.settings.property === 'condo' ? 'private' : state.settings.property,
-        maxLoan: lastResult.option.maxLoan,
+        propertyType: type === 'condo' ? 'private' : type,
+        maxLoan: option.maxLoan,
         monthlyOa: lastResult.oa
       };
     },

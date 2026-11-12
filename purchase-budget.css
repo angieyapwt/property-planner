@@ -13,8 +13,8 @@
 .budget-table th:first-child { text-align: left; }
 .budget-table thead, .budget-table .budget-key { background: #eaf1fc; color: #234975; }
 .budget-table tbody th { font-weight: 500; }
-.budget-table .budget-gap { color: #a63c4c; }
-.budget-table .budget-funded { color: #166044; font-weight: 600; }
+#purchaseBudgetView .budget-gap { color: #a63c4c; }
+#purchaseBudgetView .budget-funded { color: #166044; font-weight: 600; }
 @media (max-width: 560px) {
   .budget-table th, .budget-table td { padding: 10px; font-size: 12px; }
   #purchaseBudgetView .form-section { padding: 18px; }
