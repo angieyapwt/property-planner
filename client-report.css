@@ -9,6 +9,9 @@
 #clientReportForm .form-grid { gap: 13px; }
 #clientReportForm .field-label { min-height: 0; }
 .client-note { grid-column: 1 / -1; }
+.client-downpayment { min-width: 0; margin: 0; border: 1px solid #dbe5f3; border-radius: 6px; padding: 10px; }
+.client-downpayment legend { color: #183553; font-weight: 700; padding: 0 5px; }
+.client-downpayment p { margin: 6px 0 0; }
 .client-preview-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 #clientReportPreview { overflow: hidden; background: #fff; color: #183553; border: 1px solid #dbe5f3; border-radius: 12px; }
 #clientReportPreview header { background: #132948; color: white; padding: 20px; }
@@ -25,10 +28,14 @@
 .client-purchase-rows > div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 4px; border-bottom: 1px solid #ebf0f7; }
 .client-purchase-rows dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .client-emphasis { font-weight: 700; }
-.client-alert dt { color: #9a3141; }
+.client-alert { color: #9a3141; }
 .client-mortgage div + div { margin-top: 8px; }
 .client-mortgage dd { font-size: 17px; }
-.client-totals div { background: #132948; color: white; }
+.client-totals { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.client-totals dd { font-size: 18px; }
+.client-totals .client-balance { margin-top: 8px; font-size: 11px; color: #516783; }
+.client-totals .remaining { color: #166044; }
+.client-totals .shortfall { color: #9a3141; }
 .client-preview-footer { font-size: 11px; color: #516783; }
 @media (max-width:900px) {
   .client-report-workspace { grid-template-columns: 1fr; }
@@ -40,5 +47,3 @@
   .client-highlights div { padding: 8px 5px; font-size: 11px; }
 }
 
-.client-totals { grid-template-columns: 1fr; }
-.client-totals dd { font-size: 18px; }

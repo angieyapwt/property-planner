@@ -103,16 +103,16 @@
   }
   function clientReport(data){
     const navy='0.075 0.15 0.28', blue='0.20 0.35 0.57', muted='0.36 0.44 0.55';
-    const pale='0.93 0.96 0.995', white='1 1 1', red='0.72 0.18 0.24';
+    const pale='0.93 0.96 0.995', white='1 1 1', red='0.72 0.18 0.24', green='0.12 0.42 0.29';
     const ops=[];
     function box(x,y,w,h,color){ops.push(color+' rg '+[x,y,w,h].join(' ')+' re f');}
     function text(value,x,y,size=10,font='F1',color=navy){
       ops.push('BT /'+font+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+escape(value)+') Tj ET');
     }
-    function right(value,x,y,bold){
+    function right(value,x,y,bold,color){
       const width=[...ascii(value)].reduce((sum,ch)=>sum+(/[0-9$]/.test(ch)?5.56:ch===','||ch==='.'?2.78:5.56),0);
       const size=value.length>27?8.5:10;
-      text(value,x-width*size/10,y,size,bold?'F2':'F1');
+      text(value,x-width*size/10,y,size,bold?'F2':'F1',color);
     }
     box(0,496,842,99,navy);
     text('ESTATE BASICS  /  PRIVATE CLIENT REPORT',39,568,9,'F2','0.75 0.85 1');
@@ -134,7 +134,7 @@
       const y=361-i*rowSpacing;
       if(i%2===0)box(39,y-3,470,rowSpacing-1,'0.976 0.983 0.996');
       text(label,50,y,9,bold?'F2':'F1',alert?red:navy);
-      right(value,498,y,bold);
+      right(value,498,y,bold,alert?red:navy);
     });
     box(525,377,278,24,pale);
     text('MONTHLY MORTGAGE',536,385,10,'F2',blue);
@@ -145,20 +145,22 @@
       text(label.replace(' · ',' / '),536,y+35,9,'F2',blue);
       text(amount,536,y+12,19,'F3');
     });
-    if(data.cashCheck)text(data.cashCheck,536,193,9,'F2',blue);
-    box(39,104,764,43,navy);
-    data.totals.forEach(([label,value],i)=>{
-      const x=51+i*257;
-      text(label.toUpperCase(),x,131,8,'F2','0.75 0.85 1');
-      text(value,x,113,15,'F3',white);
+    data.totals.forEach(({label,value,balance},i)=>{
+      const x=39+i*386;
+      box(x,104,378,54,pale);
+      text(label.toUpperCase(),x+12,143,8,'F2',blue);
+      text(value,x+12,119,17,'F3');
+      const color=balance.tone==='shortfall'?red:balance.tone==='remaining'?green:muted;
+      text(balance.label,x+166,143,8,'F2',color);
+      text(balance.value,x+166,119,15,'F3',color);
     });
-    let y=89;
+    let y=96;
     for(const line of wrap(data.notes,92).slice(0,2)){
       if(line){text(line,40,y,8,'F1',navy);y-=10;}
     }
-    if(data.downpaymentNote){text(data.downpaymentNote,40,y,8,'F1',muted);y-=10;}
-    text('Planning estimate in SGD. Financing, CPF use and stamp duties are subject to confirmation.',40,y,8,'F1',muted);
-    text('Rates are illustrative and held constant over the stated term. Review actual terms with your lender.',40,y-10,8,'F1',muted);
+    for(const note of data.footnotes){
+      for(const line of wrap(note,130)){text(line,40,y,8,'F1',muted);y-=10;}
+    }
     return encodePages([ops.join('\n')],842,595,navy,muted);
   }
   function combinedReport({name,date,planner,assessment}){
