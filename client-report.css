@@ -39,3 +39,6 @@
   .client-highlights { margin-inline: 12px; }
   .client-highlights div { padding: 8px 5px; font-size: 11px; }
 }
+
+.client-totals { grid-template-columns: 1fr; }
+.client-totals dd { font-size: 18px; }

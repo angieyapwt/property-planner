@@ -8,7 +8,7 @@
   const money = value => currency.format(value);
   const percent = new Intl.NumberFormat('en-SG', {maximumFractionDigits:4});
   const defaults = {
-    client:'', lender:'', type:'condo', financing:'Bank loan', price:'', valuation:'',
+    client:'', address:'', type:'condo', financing:'Bank loan', price:'', valuation:'',
     loan:'', oa:'', cash:'', grant:'', absd:'0', legal:'', misc:'', agent:'',
     years:'', rateOne:'', rateTwo:'', notes:''
   };
@@ -18,7 +18,7 @@
     state.type = raw.type === 'hdb' ? 'hdb' : 'condo';
     if (['Bank loan','HDB loan','No loan'].includes(raw.financing)) state.financing = raw.financing;
     if (state.type !== 'hdb' && state.financing === 'HDB loan') state.financing = 'Bank loan';
-    for (const [key, limit] of [['client',65],['lender',28],['notes',150]]) {
+    for (const [key, limit] of [['client',65],['address',85],['notes',150]]) {
       state[key] = String(raw[key] ?? '').replace(/\s+/g,' ').slice(0,limit);
     }
     for (const key of [...amounts,'absd','years','rateOne','rateTwo']) {
@@ -55,11 +55,11 @@
     const months = Math.round(Number(d.years)*12);
     const rates = [d.rateOne,d.rateTwo];
     const row = (label,value,bold=false,alert=false) => ({label,value:money(value),bold,alert});
-    const title = d.financing === 'Bank loan' && d.lender.trim() ? 'Bank loan ('+d.lender.trim()+')' : d.financing;
+    const title = d.financing;
     const date = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Singapore',day:'2-digit',month:'short',year:'numeric'}).format(now);
     const valid = buy.price > 0 && (!buy.loanUsed || (months >= 1 && rates.some(rate => rate !== '')));
     return {
-      valid, client:d.client.trim(), title, date, notes:d.notes.trim(),
+      valid, client:d.client.trim(), address:d.address.trim(), title, date, notes:d.notes.trim(),
       property:d.type === 'hdb' ? 'HDB resale purchase' : 'Private residential purchase',
       highlights:[
         ['Loan used', money(buy.loanUsed)],
@@ -67,7 +67,7 @@
         ['CPF OA available', d.oa === '' ? 'Not entered' : money(Number(d.oa))]
       ],
       purchase:[
-        row('Purchase price',buy.price,true),
+        row('PROPERTY PRICE',buy.price,true),
         row(d.valuation === '' ? 'Valuation assumed equal to purchase price' : 'Indicative valuation',buy.valuation,false,buy.cov>0),
         ...(hasLoan ? [
           row('75% loan on purchase price',priceLoan),
@@ -75,15 +75,13 @@
           row('Loan difference (price less valuation)',loanDifference,true,loanDifference>0)
         ] : []),
         ...(bankLoan ? [
-          {label:'20% downpayment (cash / CPF)',value:downpaymentSplit,bold:true},
-          row('5% cash downpayment',buy.price*.05,true)
+          {label:'20% cash / CPF',value:downpaymentSplit,bold:true},
+          row('5% CASH',buy.price*.05,true)
         ] : []),
         ...(hasLoan && buy.maxLoan>buy.loanUsed ? [row('Additional loan shortfall',buy.maxLoan-buy.loanUsed)] : []),
         row('Price to fund after loan',buy.price-buy.loanUsed,true),
         ...(buy.cov > 0 ? [row('Cash over valuation (included above)',buy.cov,false,true)] : []),
-        row('Buyer’s Stamp Duty',buy.bsd),
-        row('ABSD ('+percent.format(Number(d.absd))+'%)',buy.absd),
-        row('Total stamp duty',buy.stampDutyTotal,true),
+        {label:'Stamp duty (BSD + ABSD)',value:money(buy.bsd)+' + '+money(buy.absd)+' = '+money(buy.stampDutyTotal),bold:true},
         row('Legal fees',Number(d.legal)),
         row('Miscellaneous fees',Number(d.misc)),
         row('Agent service fee',buy.fee),
@@ -103,9 +101,7 @@
         ? 'Cash shortfall: '+money(buy.cashNeeded-Number(d.cash))
         : 'Cash left after purchase: '+money(Number(d.cash)-buy.cashNeeded),
       totals:[
-        ['Cash required',money(buy.cashNeeded)],
-        ['CPF OA used',money(buy.cpfUsed)],
-        ['Total cash + CPF OA',money(buy.cashNeeded+buy.cpfUsed)]
+        ['TOTAL CASH / CPF',money(buy.cashNeeded)+' / '+money(buy.cpfUsed)]
       ],
       status: !buy.price ? 'Enter a purchase price to prepare the report.'
         : !valid ? 'Enter the loan tenure and at least one interest rate to download.'
@@ -121,18 +117,19 @@
   const key = 'estate-basics-client-report-v1';
   let state = {...defaults};
   try { state = clean(JSON.parse(localStorage.getItem(key) || '{}')); } catch {}
-  const numeric = (field,label,max=1e10) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" type="number" min="${field==='valuation'?1:0}" max="${max}" step="any" inputmode="decimal"></label>`;
+  const amountField = (field,label) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" type="text" inputmode="numeric" autocomplete="off"></label>`;
+  const numeric = (field,label,max) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" type="number" min="${field==='valuation'?1:0}" max="${max}" step="any" inputmode="decimal"></label>`;
   const text = (field,label,max) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" maxlength="${max}"></label>`;
   const form = $('clientReportForm');
   form.innerHTML = `<div class="form-grid">
-    ${text('client','Client name (optional)',65)}${text('lender','Bank name (optional)',28)}
+    ${text('client','Client name (optional)',65)}${text('address','Property address (optional)',85)}
     <label class="field"><span class="field-label">Property type</span><select name="type"><option value="condo">Private residential</option><option value="hdb">HDB resale</option></select></label>
     <label class="field"><span class="field-label">Financing</span><select name="financing"><option>Bank loan</option><option>HDB loan</option><option>No loan</option></select></label>
-    ${numeric('price','Purchase price')}${numeric('valuation','Indicative valuation (optional)')}
-    ${numeric('loan','Loan amount (blank uses modelled ceiling)')}${numeric('cash','Cash available (optional)')}
-    ${numeric('oa','CPF OA available')}${numeric('grant','HDB housing grant (if applicable)')}
-    ${numeric('absd','ABSD rate (%)',100)}${numeric('legal','Legal fees')}
-    ${numeric('misc','Miscellaneous fees')}${numeric('agent','Agent service fee (including any GST)')}
+    ${amountField('price','Purchase price')}${amountField('valuation','Indicative valuation (optional)')}
+    ${amountField('loan','Approved loan amount (optional)')}${amountField('cash','Cash savings (optional)')}
+    ${amountField('oa','CPF OA available')}${amountField('grant','HDB housing grant (if applicable)')}
+    ${numeric('absd','ABSD rate (%)',100)}${amountField('legal','Legal fees')}
+    ${amountField('misc','Miscellaneous fees')}${amountField('agent','Agent service fee (including any GST)')}
     ${numeric('years','Loan tenure (years)',35)}${numeric('rateOne','Interest rate 1 (%)',25)}
     ${numeric('rateTwo','Interest rate 2 (%)',25)}
     <label class="field client-note"><span class="field-label">Client note (optional)</span><input name="notes" maxlength="150"></label>
@@ -142,19 +139,24 @@
     try { localStorage.setItem(key,JSON.stringify(clean(state))); } catch {}
   }
   function sync(){
-    for (const [name,value] of Object.entries(state)) field(name).value = value;
+    for (const [name,value] of Object.entries(state)) {
+      const input = field(name);
+      input.setCustomValidity('');
+      input.value = amounts.includes(name) && value !== '' ? money(Number(value)) : value;
+    }
   }
   const pairs = list => list.map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('');
   function render(){
     const data = build(state);
     const invalidField = !form.checkValidity();
-    const unsupportedText = [data.client,state.lender,data.notes].some(value=>
+    const unsupportedText = [data.client,data.address,data.notes].some(value=>
       /[^\x20-\x7e–—‘’“”]/.test(value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'')));
     $('exportClientReport').disabled = !data.valid || invalidField || unsupportedText;
     $('clientReportStatus').textContent = invalidField ? 'Check the highlighted numeric fields.'
-      : unsupportedText ? 'Use Latin-script text for the client name, lender and note in the PDF.' : data.status;
+      : unsupportedText ? 'Use Latin-script text for the client name, address and note in the PDF.' : data.status;
     $('clientReportPreview').innerHTML = `<header><p>ESTATE BASICS / PRIVATE CLIENT REPORT</p><h3>${esc(data.title)}</h3><div>${esc(data.property)} · ${esc(data.date)}</div></header>
       ${data.client ? '<p class="client-prepared">Prepared for '+esc(data.client)+'</p>' : ''}
+      ${data.address ? '<p class="client-prepared">'+esc(data.address)+'</p>' : ''}
       <dl class="client-highlights">${pairs(data.highlights)}</dl>
       <div class="client-preview-columns"><section><h4>Purchase &amp; funding</h4><dl class="client-purchase-rows">
         ${data.purchase.map(r=>`<div class="${r.bold?'client-emphasis':''} ${r.alert?'client-alert':''}"><dt>${esc(r.label)}</dt><dd>${esc(r.value)}</dd></div>`).join('')}
@@ -168,7 +170,16 @@
   function update(event){
     const input = event.target;
     if (!Object.hasOwn(defaults,input.name)) return;
-    state[input.name] = input.value;
+    if (amounts.includes(input.name)) {
+      const value = input.value.replace(/[$,\s]/g,'');
+      const minimum = input.name === 'valuation' ? 1 : 0;
+      const amount = Number(value);
+      const valid = value === '' || /^\d+(?:\.\d*)?$/.test(value) && amount >= minimum && amount <= 1e10;
+      input.setCustomValidity(valid ? '' : 'Enter a valid dollar amount.');
+      if (valid) state[input.name] = value === '' ? '' : String(Math.round(amount));
+    } else {
+      state[input.name] = input.value;
+    }
     if (state.type !== 'hdb' && state.financing === 'HDB loan') {
       state.financing = 'Bank loan';
       field('financing').value = 'Bank loan';
@@ -177,6 +188,13 @@
     render();
   }
   form.addEventListener('input',update);
+  form.addEventListener('focusout',event=>{
+    const input = event.target;
+    if (amounts.includes(input.name) && input.validity.valid) {
+      const value = state[input.name];
+      input.value = value === '' ? '' : money(Number(value));
+    }
+  });
   form.addEventListener('submit',event=>event.preventDefault());
   $('importClientPurchase').addEventListener('click',()=>{
     const source = root.EstatePlannerBridge.getClientPurchase();

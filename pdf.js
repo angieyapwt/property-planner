@@ -119,7 +119,8 @@
     text(data.title,39,533,data.title.length>30?22:25,'F3',white);
     text(data.property,40,511,10,'F2',white);
     text(data.date,682,568,9,'F1',white);
-    if(data.client)text('Prepared for '+data.client,40,475,10,'F2');
+    if(data.client)text('Prepared for '+data.client,40,481,10,'F2');
+    if(data.address)text(data.address,40,467,9,'F1',muted);
     data.highlights.forEach(([label,value],index)=>{
       const x=39+index*257;
       box(x,413,250,46,pale);
