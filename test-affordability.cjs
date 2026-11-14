@@ -17,7 +17,7 @@ state.settings.selection='1';r=M.assess(state);eq(r.age,50);eq(r.income,3000);eq
 state.settings.selection='all';state.settings.existingLoans='1';r=M.assess(state);eq(r.outcomes.hdb.standard.ltv,.45);eq(r.outcomes.hdb.extended.ltv,.25);state.settings.existingLoans='2';r=M.assess(state);eq(r.outcomes.hdb.standard.ltv,.35);eq(r.outcomes.hdb.extended.ltv,.15);
 state=M.defaults();state.applicants=[a(35,20000)];state.targets.hdb={price:'600000',valuation:'550000'};r=M.assess(state);eq(r.option.maxLoan,412500);eq(r.option.minCash,77500);eq(r.option.equity,187500);
 state.settings.stressRate='2';eq(M.assess(state).stress,4);state.settings.thereafterRate='5';eq(M.assess(state).stress,5);state.settings.actualRate='6';eq(M.assess(state).stress,6);
-state.applicants=[a(35,4000,{incomeType:'variable',annual:'24000',annualType:'variable'})];r=M.assess(state);eq(r.gross,6000);eq(r.income,4200);state.applicants[0].annualType='fixed';eq(M.assess(state).income,4800);
+state.applicants=[a(35,4000,{incomeType:'variable',annual:'24000',annualType:'variable'})];r=M.assess(state);eq(r.gross,6000);eq(r.income,5400);state.applicants[0].annualType='fixed';eq(M.assess(state).income,5400);
 state.applicants=[a(75,10000)];r=M.assess(state);eq(r.option.valid,false);eq(r.outcomes.hdb.extended.months,0);
 state.applicants=[a(35,3000,{car:'3000'})];r=M.assess(state);eq(r.option.maxLoan,0);eq(r.tdsrHeadroom,0);
 for(const rate of [0,1,4,10])for(const months of [12,120,300,420])near(M.presentValue(M.payment(500000,rate,months),rate,months),500000);

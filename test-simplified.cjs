@@ -8,7 +8,7 @@ raw.applicants=[{...M.applicant(),age:'40',ageAuto:false,income:'6000',annual:'2
 raw.targets.hdb={price:'300000',valuation:'250000',loan:''};
 let state=M.simplifyState(raw),r=M.assess(state);
 eq(state.settings.maxMaturity,'65');eq(state.settings.existingLoans,'0');eq(state.settings.ecType,'new');eq(state.settings.thereafterRate,'');eq(state.settings.term,'standard');
-eq(state.applicants[0].annualType,'variable');eq(state.applicants[0].cpfProfile,'full');eq(state.applicants[0].frsMet,false);eq(state.applicants[0].housing,'');
+eq(Object.hasOwn(state.applicants[0],'annualType'),false);eq(state.applicants[0].cpfProfile,'full');eq(state.applicants[0].frsMet,false);eq(state.applicants[0].housing,'');
 eq(r.income,7400);eq(r.debt,0);eq(r.stress,4);eq(r.outcomes.ec.msr,true);eq(r.option.ltv,.75);eq(r.option.months,300);eq(r.property.hasTarget,false);
 eq(r.option.maxLoan,Math.floor(M.presentValue(7400*.3,4,300)));
 state.applicants.push({...M.applicant(),age:'30',ageAuto:false,income:'4000'});
