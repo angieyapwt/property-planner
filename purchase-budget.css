@@ -2,7 +2,7 @@
 #purchaseBudgetView .form-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 #purchaseBudgetView .form-section h3, .budget-cost-heading h3 { font: 26px var(--serif); color: #234975; }
 #purchaseBudgetView .form-section h3 { margin: 0 0 18px; }
-#purchaseBudgetView .field-label { min-height: 0; }
+#purchaseBudgetView .field-label { min-height: 2.8em; display: flex; align-items: end; }
 .budget-metrics { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
 .budget-cost-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 10px 22px; }
 .budget-cost-heading h3 { margin: 0; }

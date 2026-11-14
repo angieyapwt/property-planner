@@ -4,6 +4,7 @@
   let reset;
   const actions=[
     ['affStartFresh','Start a fresh affordability assessment?',()=>window.EstateAffordability.startFresh()],
+    ['purchaseBudgetStartFresh','Start a fresh purchase budget?',()=>window.EstatePurchaseBudget.startFresh()],
     ['othersStartFresh','Start a fresh Others calculation?',()=>window.EstateOthers.startFresh()],
     ['clientStartFresh','Start a fresh Client Report?',()=>window.EstateClientReport.startFresh()]
   ];

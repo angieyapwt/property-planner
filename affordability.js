@@ -21,12 +21,12 @@
   function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));$('affSaveStatus').textContent='Assessment saved on this device. It stays available across property types and tabs.';}catch{$('affSaveStatus').textContent='Browser storage is unavailable. Download a Property Planner backup to retain this assessment.';}}
   function renderApplicants(){
     $('applicants').innerHTML=state.applicants.map((a,i)=>`<section class="form-section applicant-card"><div class="applicant-title"><div><span class="eyebrow">APPLICANT ${i+1}</span><h3>${esc(a.name||'Applicant '+(i+1))}</h3></div>${state.applicants.length>1?`<button type="button" class="text-button remove-applicant" data-remove="${i}">Remove applicant</button>`:''}</div><div class="form-grid">
-      ${field(i,'name','Applicant name (optional)')}${field(i,'dob','Date of birth (optional)','Enter DDMMYYYY (e.g. 05021990 → 05-Feb-1990). Age updates from DOB. Editing age overrides it until DOB is changed or restored.','dob')}
-      ${field(i,'age','Age','<button type="button" class="inline-button" data-reset-age="'+i+'">Use DOB age</button>','number')}${field(i,'income','Gross monthly income','Before employee CPF and tax; exclude employer CPF.','money')}
-      ${field(i,'oa','Monthly CPF allocated to OA','<span id="oa-mode-'+i+'">Automatic estimate.</span> <button type="button" class="inline-button" data-reset-oa="'+i+'">Use automatic OA</button>','money')}${field(i,'annual','Other annual income','Enter the preceding 12 months of bonuses / other annual income. Always recognised at 70% for the loan assessment.','money')}
-      <div class="field"><span class="field-label">Assessable income per month</span><output id="app-${i}-gross" class="calculated-output"></output><span class="hint">Gross monthly income + (70% of other annual income ÷ 12).</span></div>
+      ${field(i,'name','Applicant name (optional)')}${field(i,'dob','Date of birth (optional)','','dob')}
+      ${field(i,'age','Age','<button type="button" class="inline-button" data-reset-age="'+i+'">Use DOB age</button>','number')}${field(i,'income','Gross monthly income','','money')}
+      ${field(i,'oa','Monthly CPF allocated to OA','<button type="button" class="inline-button" data-reset-oa="'+i+'">Use automatic OA</button>','money')}${field(i,'annual','Other annual income','','money')}
+      <div class="field"><span class="field-label">Assessable income per month</span><output id="app-${i}-gross" class="calculated-output"></output></div>
       </div><div class="debt-heading"><h4>Monthly debt obligations</h4><span>Enter monthly assessed repayments, not outstanding balances.</span></div><div class="form-grid">
-      ${field(i,'car','Car loan','Monthly repayment.','money')}${field(i,'card','Credit card','Bank-assessed monthly obligation, not credit limit or outstanding balance.','money')}
+      ${field(i,'car','Car loan','','money')}${field(i,'card','Credit card','','money')}
       ${field(i,'other','Other loan','Include renovation, student and other regular loan repayments.','money')}
       </div></section>`).join('');
     $('addApplicant').disabled=state.applicants.length>=2;$('addApplicant').hidden=state.applicants.length>=2;
@@ -42,7 +42,6 @@
     if(a.ageAuto!==false)$('app-'+i+'-age').value=data.age===null?'':data.age;
     if(a.oaAuto!==false)$('app-'+i+'-oa').value=whole(data.cpf);
     $('app-'+i+'-gross').textContent=money(data.recognized,2);
-    $('oa-mode-'+i).textContent=a.oaAuto===false?'Manual OA override.':'Auto: 2026 CPF tables, ordinary wages only.';
   });}
   const settingIds={stressRate:'affStress',standardYears:'affStandardYears',actualRate:'affActual',comparisonLoan:'comparisonLoan',comparisonYears:'comparisonYears',comparisonRateTwo:'comparisonRateTwo'};
   function syncSettings(){for(const [key,id]of Object.entries(settingIds))$(id).value=state.settings[key];$('affName').value=state.name;$('affNotes').value=state.notes;$('affDate').value=state.settings.asOf;renderSelection();}
@@ -117,7 +116,7 @@
       <tbody>${scheduleRows.join('')}</tbody></table></div>`;
   }
   function renderResults(){syncApplicants();renderSelection();const r=M.assess(state);lastResult=r;state.settings.selection=r.state.settings.selection;
-    $('affMetrics').innerHTML=[metric('Assessable monthly income',money(r.income,2),'Gross monthly income + (70% of other annual income ÷ 12)'),metric('Selected monthly debts',money(r.debt,2),'Car, credit card and other loan repayments'),metric('Income-Weighted Average Age (IWAA)',r.age===null?'—':r.age+' years','Rounded up for tenure assessment'),metric('Estimated monthly OA',money(r.oa,2),'Selected applicants only')].join('');
+    $('affMetrics').innerHTML=[metric('Assessable monthly income',money(r.income,2)),metric('Selected monthly debts',money(r.debt,2),'Car, credit card and other loan repayments'),metric('Income-Weighted Average Age (IWAA)',r.age===null?'—':r.age+' years','Rounded up for tenure assessment'),metric('Estimated monthly OA',money(r.oa,2),'Selected applicants only')].join('');
     const warnings=[];if(!r.validAges)warnings.push('Enter a valid age or DOB for every selected applicant (18–100).');if(r.income<=0)warnings.push('Enter income to calculate loan capacity.');if(M.has(state.settings.stressRate)&&M.n(state.settings.stressRate)<4)warnings.push('The entered assessment rate is below the current MAS 4% floor. This assessment uses at least 4%.');if(r.stress>Math.max(4,M.n(state.settings.stressRate)))warnings.push('The quoted rate raises the effective assessment rate to '+r.stress.toFixed(2)+'%.');if(state.settings.asOf.slice(0,4)!=='2026')warnings.push('Automatic OA uses 2026 CPF tables. Enter actual OA amounts for other years.');if(r.debt>r.income*.55)warnings.push('Existing debts already exceed 55% of bank-recognised income. No TDSR headroom remains.');
     $('affWarnings').replaceChildren();for(const warning of warnings){const p=document.createElement('p');p.textContent=warning;$('affWarnings').append(p);}
     $('affComparison').innerHTML=['hdb','ec','condo'].map(type=>{
@@ -128,7 +127,6 @@
     const propertyLabel={hdb:'HDB',ec:'EC',condo:'Condo'}[state.settings.property];
     $('affDetailTitle').textContent=propertyLabel+' Property Assessment Summary';
     if(document.activeElement!==$('affStandardYears'))$('affStandardYears').value=r.option.months?number(r.option.months/12):'';
-    const budget=M.propertyBudget(r.loan,r.option.ltv);
     const maximums=incomeMaximums(r.property.standard);
     $('affLoan').textContent=maximums.loan;
     const status=!r.option.valid?'Enter income and age, then select an available tenure.':r.within?'Within the modelled debt-servicing and LTV limits.':'The assessment exceeds a modelled lending limit.';
@@ -138,15 +136,14 @@
       ['Max Loan',maximums.loan,'key'],
       ['Max Property Price',maximums.price,'key'],
       ['Loan tenure',tenure(r.option.months)],['LTV limit',(r.option.ltv*100).toFixed(0)+'%'],
-      ['Quoted / illustrative interest rate',r.actualEntered?number(M.n(state.settings.actualRate))+'%':'Not entered'],
-      ['Downpayment before purchase costs',r.option.valid?money(budget.equity):'—'],
+      ['Indicative interest rate',r.actualEntered?number(M.n(state.settings.actualRate))+'%':'Not entered'],
       ['Monthly instalment',r.actualEntered?money(r.schedule.payment,2):'—','key'],
       ['First-month principal',r.actualEntered?money(r.schedule.rows[0]?.principal||0,2):'—'],
       ['First-month interest',r.actualEntered?money(r.schedule.rows[0]?.interest||0,2):'—'],
       ['Estimated monthly OA',money(r.oa,2)],
       ['Monthly cash gap after estimated OA',r.actualEntered?money(r.cashMonthly,2):'—']
     ];
-    $('repaymentSummary').innerHTML=`<p class="summary-assessment-status ${r.within?'within':'outside'}" role="status">${esc(status)}</p><dl class="property-summary-lines">${rows.map(([label,value,kind])=>`<div class="${kind||''}"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl><p class="small muted">Property price = loan ÷ LTV, assuming price equals valuation. Downpayments exclude stamp duties and other purchase costs.</p>`;
+    $('repaymentSummary').innerHTML=`<p class="summary-assessment-status ${r.within?'within':'outside'}" role="status">${esc(status)}</p><dl class="property-summary-lines">${rows.map(([label,value,kind])=>`<div class="${kind||''}"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`;
     $('exportCombinedAssessment').disabled=!r.option.valid||!window.EstatePlannerBridge?.getReportData();$('affCombinedHint').textContent=$('exportCombinedAssessment').disabled?'Complete the assessment and enter a Property Planner calculation to enable combined export.':'Combined export is available: both current calculations will be included.';
     $('applyAffLoan').disabled=!r.within||!r.option.valid;$('exportAffPdf').disabled=!r.option.valid;if($('amortisation').open)renderAmortisation();
     renderLoanComparison();
@@ -158,9 +155,8 @@
     const r=M.assess(state);if(!r?.option.valid)return;const groups=[];
     groups.push({title:'Selected borrowers & debt-service position',rows:[['Assessable income per month',r.income],['Existing monthly debts',r.debt],['Estimated monthly OA',r.oa]].map(([label,value])=>({label,amount:money(value,2)}))});
     groups.push({title:'Max Loan and Max Property Price / maturity by age 65',rows:['hdb','ec','condo'].flatMap(type=>{const o=r.outcomes[type].standard,label={hdb:'HDB',ec:'EC',condo:'Condo'}[type],maximums=incomeMaximums(o);return [{label:label+' Max Loan / '+tenure(o.months)+' / '+(o.ltv*100).toFixed(0)+'% LTV',amount:maximums.loan,bold:true},{label:label+' Max Property Price',amount:maximums.price}];})});
-    const budget=M.propertyBudget(r.loan,r.option.ltv);
     const maximums=incomeMaximums(r.property.standard);
-    groups.push({title:({hdb:'HDB',ec:'EC',condo:'Condo'}[state.settings.property])+' Property Assessment Summary',rows:[{label:'Max Loan',amount:maximums.loan,bold:true},{label:'Max Property Price at '+(r.option.ltv*100).toFixed(0)+'% LTV',amount:maximums.price,bold:true},{label:'Downpayment before purchase costs',amount:money(budget.equity)},{label:'Property type',amount:state.settings.property.toUpperCase()},...(r.actualEntered?[{label:'Quoted / illustrative rate',amount:M.n(state.settings.actualRate).toFixed(2)+'%'},{label:'Monthly instalment',amount:money(r.schedule.payment,2),bold:true},{label:'First-month principal',amount:money(r.schedule.rows[0]?.principal||0,2)},{label:'First-month interest',amount:money(r.schedule.rows[0]?.interest||0,2)},{label:'Monthly cash gap after estimated OA',amount:money(r.cashMonthly,2)}]:[])]});
+    groups.push({title:({hdb:'HDB',ec:'EC',condo:'Condo'}[state.settings.property])+' Property Assessment Summary',rows:[{label:'Max Loan',amount:maximums.loan,bold:true},{label:'Max Property Price at '+(r.option.ltv*100).toFixed(0)+'% LTV',amount:maximums.price,bold:true},{label:'Property type',amount:state.settings.property.toUpperCase()},...(r.actualEntered?[{label:'Indicative interest rate',amount:M.n(state.settings.actualRate).toFixed(2)+'%'},{label:'Monthly instalment',amount:money(r.schedule.payment,2),bold:true},{label:'First-month principal',amount:money(r.schedule.rows[0]?.principal||0,2)},{label:'First-month interest',amount:money(r.schedule.rows[0]?.interest||0,2)},{label:'Monthly cash gap after estimated OA',amount:money(r.cashMonthly,2)}]:[])]});
     const inputs=[{label:'Assessment date',value:state.settings.asOf},{label:'Max Loan used for repayments',value:maximums.loan},{label:'Selected applicants',value:r.indices.map(i=>'Applicant '+(i+1)).join(', ')},{label:'Income-Weighted Average Age used (rounded up)',value:String(r.age)},{label:'Assumed maximum maturity age',value:state.settings.maxMaturity},{label:'Housing loan assumption',value:'First housing loan; no existing housing instalments'}];
     state.applicants.forEach((a,i)=>{const v=M.applicantValues(a,state.settings.asOf);for(const [label,value]of [['Name',a.name||'Not entered'],['DOB',DobInput.format(a.dob)||'Not entered'],['Age',v.age??'Not entered'],['Gross monthly income',money(M.n(a.income),2)],['Other annual income',money(M.n(a.annual),2)],['Assessable income per month',money(v.recognized,2)],['Monthly CPF OA',money(v.cpf,2)],['Car loan',money(M.n(a.car),2)],['Credit-card monthly obligation',money(M.n(a.card),2)],['Other loan',money(M.n(a.other),2)]])inputs.push({label:'Applicant '+(i+1)+' / '+label,value:String(value)});});
     const name=state.name||window.EstatePlannerBridge?.getName()||'Affordability Assessment';return {name,scenario:'Affordability Assessment / '+state.settings.property.toUpperCase(),date:new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore'}),primaryLabel:'Max Loan / selected property assessment',primary:maximums.loan,groups,inputs,notes:state.notes,assumptions:['Bank-loan planning only. TDSR 55%; applicable MSR 30%. First housing loan assumed. Assessable monthly income includes 100% of gross monthly income plus 70% of other annual income divided by 12. EC assumes MSR applies.','Planning assumption: income-weighted age is rounded up to the next whole year before tenure and LTV calculations. Confirm lender rounding policy. Standard LTV requires maturity by 65 and tenure up to 25 years for HDB / 30 years for private property. Longer loans use reduced LTV tiers.','Maximum bank-loan tenure: 30 years for HDB, 35 years for private property. The chosen maturity age is an editable bank-policy assumption, not a universal MAS cap.','2026 CPF private-sector employee tables and $8,000 monthly ordinary-wage ceiling used. OA excludes bonus CPF and remains subject to CPF usage limits.','Not an approval or HDB/EC eligibility assessment. Subject to lender verification, documentation, remaining lease, income and ownership rules.','Sources checked 28 Oct 2026: MAS macroprudential policies; MAS MSR and TDSR rules; CPF contribution and allocation rates 2026.']};

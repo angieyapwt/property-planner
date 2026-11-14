@@ -74,17 +74,18 @@
       return {label:fund+(difference<0?' top-up needed':' remaining'),value:money(Math.abs(difference)),tone:difference<0?'shortfall':'remaining'};
     };
     const months = Math.round(Number(d.years)*12);
-    const rates = [d.rateOne,d.rateTwo];
+    const rates = bankLoan ? [d.rateOne,d.rateTwo] : [d.rateOne];
     const row = (label,value,bold=false,alert=false) => ({label,value:money(value),bold,alert});
-    const title = d.financing;
+    const title = bankLoan ? 'Financial - Bank Loan' : hasLoan ? 'Financial - HDB Loan' : 'Financial - No Loan';
     const date = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Singapore',day:'2-digit',month:'short',year:'numeric'}).format(now);
     const valid = buy.price > 0 && !splitError && (!buy.loanUsed || (months >= 1 && rates.some(rate => rate !== '')));
     return {
       valid, split:{visible:hasLoan,label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',cash:splitCash,cpf:splitCpf,error:splitError},
-      client:d.client.trim(), address:d.address.trim(), title, date, notes:d.notes.trim(),
+      client:d.client.trim(), address:d.address.trim(), title, date,
+      preparedBy:'ESTATE BASICS / PREPARED BY ANGIE YAP AND AMETHYST TEO',
       property:d.type === 'hdb' ? 'HDB resale purchase' : 'Private residential purchase',
       highlights:[
-        ['Loan used', money(buy.loanUsed)],
+        ['Loan Amount', money(buy.loanUsed)],
         ['Cash available', d.cash === '' ? 'Not entered' : money(Number(d.cash))],
         ['CPF OA available', d.oa === '' ? 'Not entered' : money(Number(d.oa))]
       ],
@@ -98,7 +99,7 @@
         ] : []),
         ...(hasLoan ? [{label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',value:downpaymentSplit,bold:true}] : []),
         ...(bankLoan ? [row('5% Cash',buy.price*.05,true)] : []),
-        ...(hasLoan && buy.maxLoan>buy.loanUsed ? [row('Additional loan shortfall',buy.maxLoan-buy.loanUsed)] : []),
+        ...(hasLoan && lowValuation && buy.maxLoan>buy.loanUsed ? [row('Additional loan shortfall',buy.maxLoan-buy.loanUsed,false,true)] : []),
         ...(buy.cov > 0 ? [row('Cash over valuation',buy.cov,false,true)] : []),
         {label:'Stamp duty (BSD + ABSD)',value:money(buy.bsd)+' + '+money(buy.absd)+' = '+money(buy.stampDutyTotal),bold:true},
         row('Legal fees',Number(d.legal)),
@@ -108,8 +109,8 @@
       ],
       footnotes:[
         ...(d.agentNote ? ['* Agent service fee: '+d.agentNote.trim()] : []),
-        ...(buy.loanUsed && rates.some(rate=>rate!=='') ? [
-          "* Indicative rate only. The final interest rate is subject to "+(bankLoan?"the bank's":"HDB's")+" prevailing rates and approval at the point of loan application."
+        ...(bankLoan && buy.loanUsed && rates.some(rate=>rate!=='') ? [
+          "* Indicative rate only. The final interest rate is subject to the bank's prevailing rates and approval at the point of loan application."
         ] : [])
       ],
       tenure: !buy.loanUsed ? 'No mortgage payment' : months > 0
@@ -216,13 +217,19 @@
     const data = build(state);
     syncSplit(data.split);
     const invalidField = !form.checkValidity();
-    const unsupportedText = [data.client,data.address,data.notes,...data.footnotes].some(value=>
+    const showGrant = state.type === 'hdb';
+    field('grant').disabled = !showGrant;
+    field('grant').closest('label').hidden = !showGrant;
+    const showStressRate = state.financing === 'Bank loan';
+    field('rateTwo').disabled = !showStressRate;
+    field('rateTwo').closest('label').hidden = !showStressRate;
+    const unsupportedText = [data.client,data.address,...data.footnotes].some(value=>
       /[^\x20-\x7e–—‘’“”]/.test(value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'')));
     $('exportClientReport').disabled = !data.valid || invalidField || unsupportedText;
     $('saveClientReportDevice').disabled = invalidField;
     $('clientReportStatus').textContent = invalidField ? 'Check the highlighted numeric fields.'
-      : unsupportedText ? 'Use Latin-script text for the client name, address and notes in the PDF.' : data.status;
-    $('clientReportPreview').innerHTML = `<header><p>ESTATE BASICS / PRIVATE CLIENT REPORT</p><h3>${esc(data.title)}</h3><div>${esc(data.property)} · ${esc(data.date)}</div></header>
+      : unsupportedText ? 'Use Latin-script text for the client name, address and agent fee footnote in the PDF.' : data.status;
+    $('clientReportPreview').innerHTML = `<header><p class="client-report-meta"><span>${esc(data.preparedBy)}</span><time>${esc(data.date)}</time></p><h3>${esc(data.title)}</h3><div>${esc(data.property)}</div></header>
       ${data.client ? '<p class="client-prepared">Prepared for '+esc(data.client)+'</p>' : ''}
       ${data.address ? '<p class="client-prepared">'+esc(data.address)+'</p>' : ''}
       <dl class="client-highlights">${pairs(data.highlights)}</dl>
@@ -230,8 +237,7 @@
         ${data.purchase.map(r=>`<div class="${r.bold?'client-emphasis':''} ${r.alert?'client-alert':''}"><dt>${esc(r.label)}</dt><dd>${esc(r.value)}</dd></div>`).join('')}
       </dl></section><section><h4>Monthly mortgage</h4><p>${esc(data.tenure)}</p><dl class="client-mortgage">${pairs(data.mortgage)}</dl>
       </section></div>
-      <dl class="client-highlights client-totals">${data.totals.map(({label,value,balance})=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd><dd class="client-balance ${balance.tone}">${esc(balance.label)} · ${esc(balance.value)}</dd></div>`).join('')}</dl>
-      ${data.notes ? '<p class="client-prepared">'+esc(data.notes)+'</p>' : ''}
+      <div class="client-highlights client-totals">${data.totals.map(({label,value,balance})=>`<dl><div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div><div class="client-balance ${balance.tone}"><dt>${esc(balance.label)}</dt><dd>${esc(balance.value)}</dd></div></dl>`).join('')}</div>
       ${data.footnotes.map(note=>'<p class="client-preview-footer">'+esc(note)+'</p>').join('')}`;
   }
   function update(event){

@@ -66,8 +66,8 @@
           row('Cash top up for Loan',loanGap,'guide'),...(maxLoan>loan?[row('Additional approved-loan shortfall',maxLoan-loan,'guide')]:[]),
           row('Stamp duty basis',stampBasis,'guide'),row('Buyer stamp duty',bsd),row('ABSD ('+n(d.absdRate)+'%)',absd),
           row('Total Stamp Duty',stampDutyTotal,'subtotal'),row('Legal fee',legal),
-          row('Miscellaneous fee (cash only)',misc),row(d.buyCommissionGst===false?'Agent commission (without GST, cash only)':'Commission including GST (cash only)',fee),row('Purchase requirement before CPF / grants',requirement,'subtotal'),
-          row('Housing grants used',-grantUsed),row('CPF OA used',-cpfUsed),row('Cash needed before sale proceeds / savings',cashNeeded,'total')]};
+          row('Miscellaneous fee (cash only)',misc),row(d.buyCommissionGst===false?'Agent commission (without GST, cash only)':'Commission including GST (cash only)',fee),row(isHdb?'Purchase requirement before CPF / grants':'Purchase requirement before CPF',requirement,'subtotal'),
+          ...(isHdb?[row('Housing grants used',-grantUsed)]:[]),row('CPF OA used',-cpfUsed),row('Cash needed before sale proceeds / savings',cashNeeded,'total')]};
     }
     const savings=buy?n(d.cashSavings):0,proceeds=sale?sale.proceeds:0;
     const topUp=buy?Math.max(buy.cashNeeded-proceeds-savings,0):0;
@@ -83,7 +83,7 @@
           r.bold=r.label==='Selling price';
           r.red=['Outstanding HIP','Resale levy','Bank penalty'].includes(r.label);
         } else if(group.title==='Purchase breakdown') {
-          r.bold=['Purchase price','20% downpayment by cash / CPF','5% cash downpayment','Maximum loan at 75% of lower price / valuation','Buyer stamp duty','Purchase requirement before CPF / grants','Net loan after paydown'].includes(r.label)||r.label.startsWith('ABSD (');
+          r.bold=['Purchase price','20% downpayment by cash / CPF','5% cash downpayment','Maximum loan at 75% of lower price / valuation','Buyer stamp duty','Total Stamp Duty','Purchase requirement before CPF','Purchase requirement before CPF / grants','Net loan after paydown'].includes(r.label)||r.label.startsWith('ABSD (');
           r.red=['Cash top up for Loan','Second HDB loan proceeds paydown'].includes(r.label)||(r.label==='Valuation / market value'&&buy.valuation<buy.price);
         } else r.bold=r.kind==='total';
       }

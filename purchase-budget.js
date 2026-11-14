@@ -79,6 +79,9 @@
     const state = clean(raw);
     const targetPrice = Number(state.targetPrice);
     const annualGrowth = 1 + Number(state.salaryIncrease) / 100;
+    const startingSalary = assessment ? affordability.selectedIndices(assessment).reduce(
+      (total, index) => total + affordability.n(assessment.applicants[index].income), 0
+    ) : null;
     let oa = Number(state.oaBalance);
     let cash = Number(state.cashBalance);
     const rows = Array.from({length: 11}, (_, year) => {
@@ -93,11 +96,12 @@
       const maxLoan = assessment
         ? projectedLoan(assessment, state.propertyType, year, annualGrowth ** year)
         : Number(state.maxLoan);
+      const salary = startingSalary === null ? null : startingSalary * annualGrowth ** year;
       const funding = {...state, maxLoan};
       const target = targetPrice > 0 ? purchaseCosts(targetPrice, funding) : null;
       const price = maxPrice(funding, oa, cash);
       const targetBalance = target ? cents(cash - cashRequired(target, oa)) : null;
-      return {year, monthlyOa, oa, cash, price, maxLoan, target, targetBalance};
+      return {year, salary, monthlyOa, oa, cash, price, maxLoan, target, targetBalance};
     });
     return {
       state, target:rows[0].target, rows,
@@ -132,24 +136,29 @@
     ];
     return {
       state, year, target, timing, now:format(rows[0].price), benchmark:format(benchmark.price),
+      nowNote:rows[0].price === 0
+        ? 'No purchase fits '+format(rows[0].cash)+' cash and '+format(rows[0].oa)+' CPF OA today.'
+        : 'After downpayment and purchase costs',
       salaryIncrease: Number(state.salaryIncrease) + '%',
       loanProjectionNote: assessment
         ? 'Each year-end Max Loan uses projected salary and age, with other lending inputs held fixed.'
         : 'Max Loan is held fixed. Link an Affordability Assessment to project future loan limits.',
       propertyType:propertyNames[state.propertyType], targetToday:target ? signedBalance(rows[0].targetBalance) : null,
       yearLabel:period(year.year), affordablePrice:format(year.price),
-      projectionHeaders:['When','Monthly CPF OA','Accumulated CPF OA','Cash savings','Max Loan','Max purchase price',...(target ? ['Target cash balance'] : [])],
+      projectionHeaders:['When','Monthly salary','Monthly CPF OA','Accumulated CPF OA','Cash savings','Max Loan','Max purchase price',...(target ? ['Target cash balance'] : [])],
       projectionRows:rows.map(row => ({
-        year:row.year, label:period(row.year), values:[row.monthlyOa,row.oa,row.cash,row.maxLoan,row.price].map(format),
+        year:row.year, label:period(row.year),
+        values:[row.salary === null ? '—' : format(row.salary), ...[row.monthlyOa,row.oa,row.cash,row.maxLoan,row.price].map(format)],
         balance:target ? signedBalance(row.targetBalance) : null, key:row.year === 0
       })),
       costHeaders:['Amount','Loan benchmark','Affordable · '+period(year.year),...(target ? ['At target price'] : [])],
       costRows:costLines.filter(([, key]) => key !== 'extraEquity' || scenarios.some(costs => costs.extraEquity > 0))
-        .map(([label, key]) => ({label, key:key === 'outlay', values:scenarios.map(costs => format(typeof key === 'function' ? key(costs) : costs[key]))})),
+        .map(([label, key]) => ({label, key:key === 'outlay', values:scenarios.map((costs,index) =>
+          index === 1 && year.price === 0 ? '—' : format(typeof key === 'function' ? key(costs) : costs[key]))})),
       targetForYear: target ? signedBalance(year.targetBalance) : null,
       cash:format(year.cash), oa:format(year.oa), maxLoan:format(year.maxLoan),
       targetPrice:target ? format(target.price) : '',
-      noPurchase:year.price === 0 ? 'No purchase fits the available cash and CPF OA for '+period(year.year).toLowerCase()+'. Check your balances and the minimum cash needed.' : ''
+      noPurchase:year.price === 0 ? 'No affordable purchase for '+period(year.year)+' with '+format(year.cash)+' cash and '+format(year.oa)+' CPF OA.' : ''
     };
   }
 
@@ -191,13 +200,14 @@
     const selectedYear = Number($('purchaseBudgetYear').value);
     const data = reportData(state, selectedYear, linked ? root.EstateAffordability.getState() : null);
     $('purchaseBudgetNow').textContent = data.now;
+    $('purchaseBudgetNowNote').textContent = data.nowNote;
     $('purchaseBudgetBenchmark').textContent = data.benchmark;
     showBalance($('purchaseBudgetTarget'), data.targetToday);
     $('purchaseBudgetTiming').textContent = data.timing;
     $('purchaseBudgetTargetHeading').hidden = !data.target;
     $('purchaseBudgetProjection').innerHTML = data.projectionRows.map(row =>
       `<tr data-budget-year="${row.year}" class="${row.year === selectedYear ? 'budget-selected' : ''}"><th scope="row"><button type="button" class="budget-year-button" aria-label="Show purchase budget for ${row.label}" aria-pressed="${row.year === selectedYear}">${row.label}</button></th>` +
-      row.values.map((value,index) => index >= 3 ? `<td><strong>${value}</strong></td>` : `<td>${value}</td>`).join('') +
+      row.values.map((value,index) => index >= 4 ? `<td><strong>${value}</strong></td>` : `<td>${value}</td>`).join('') +
       (row.balance ? `<td class="${row.balance.tone}">${row.balance.text}</td>` : '') + '</tr>').join('');
 
     $('purchaseBudgetCostsTitle').textContent = 'Purchase cost breakdown · ' + data.yearLabel;
@@ -339,6 +349,17 @@
   for (let year = 0; year <= 10; year++) {
     $('purchaseBudgetYear').add(new Option(period(year), year));
   }
+  root.EstatePurchaseBudget = {
+    startFresh() {
+      state = {...defaults};
+      linked = false;
+      $('purchaseBudgetYear').value = '0';
+      $('purchaseBudgetStatus').textContent = '';
+      sync();
+      persist();
+      render();
+    }
+  };
   sync();
   render();
 })(globalThis);

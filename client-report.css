@@ -16,6 +16,8 @@
 #clientReportPreview { overflow: hidden; background: #fff; color: #183553; border: 1px solid #dbe5f3; border-radius: 12px; }
 #clientReportPreview header { background: #132948; color: white; padding: 20px; }
 #clientReportPreview header p { font-size: 10px; letter-spacing: .12em; margin: 0 0 8px; color: #c4dafa; }
+.client-report-meta { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.client-report-meta time { color: white; white-space: nowrap; letter-spacing: 0; }
 #clientReportPreview header h3 { color: white; font-size: 27px; margin-bottom: 6px; }
 .client-prepared, .client-preview-footer { margin: 14px 20px; overflow-wrap: anywhere; }
 .client-highlights { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin: 14px 20px; }
@@ -25,7 +27,8 @@
 .client-preview-columns { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(0,1fr); gap: 14px; padding: 0 20px; font-size: 12px; }
 .client-preview-columns h4 { margin: 0; background: #eef4fd; padding: 8px; }
 .client-purchase-rows, .client-mortgage { margin: 8px 0; }
-.client-purchase-rows > div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 4px; border-bottom: 1px solid #ebf0f7; }
+.client-purchase-rows > div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 4px; }
+.client-purchase-rows > div:nth-child(odd) { background: #f9faff; }
 .client-purchase-rows dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .client-emphasis { font-weight: 700; }
 .client-alert { color: #9a3141; }
@@ -33,7 +36,8 @@
 .client-mortgage dd { font-size: 17px; }
 .client-totals { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .client-totals dd { font-size: 18px; }
-.client-totals .client-balance { margin-top: 8px; font-size: 11px; color: #516783; }
+.client-totals dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); margin: 0; padding: 0; background: #eef4fd; border-radius: 6px; }
+.client-totals .client-balance { color: #516783; }
 .client-totals .remaining { color: #166044; }
 .client-totals .shortfall { color: #9a3141; }
 .client-preview-footer { font-size: 11px; color: #516783; }
@@ -45,5 +49,6 @@
   .client-preview-columns { grid-template-columns: 1fr; }
   .client-highlights { margin-inline: 12px; }
   .client-highlights div { padding: 8px 5px; font-size: 11px; }
+  .client-totals dl { grid-template-columns: 1fr; }
 }
 

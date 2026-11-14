@@ -118,7 +118,7 @@
       text(value,x-width*size/10,y,size,bold?'F2':'F1',color);
     }
     box(0,496,842,99,navy);
-    text('ESTATE BASICS  /  PRIVATE CLIENT REPORT',39,568,9,'F2','0.75 0.85 1');
+    text(data.preparedBy,39,568,9,'F2','0.75 0.85 1');
     text(data.title,39,533,data.title.length>30?22:25,'F3',white);
     text(data.property,40,511,10,'F2',white);
     text(data.date,682,568,9,'F1',white);
@@ -127,11 +127,11 @@
     data.highlights.forEach(([label,value],index)=>{
       const x=39+index*257;
       box(x,413,250,46,pale);
-      text(label.toUpperCase(),x+12,442,8,'F2',blue);
+      text(label,x+12,442,8,'F2',blue);
       text(value,x+12,423,16,'F3');
     });
     box(39,377,470,24,pale);
-    text('PURCHASE & FUNDING',50,385,10,'F2',blue);
+    text('Purchase & funding',50,385,10,'F2',blue);
     const rowSpacing=Math.min(15,195/Math.max(data.purchase.length-1,1));
     data.purchase.forEach(({label,value,bold,alert},i)=>{
       const y=361-i*rowSpacing;
@@ -140,7 +140,7 @@
       right(value,498,y,bold,alert?red:navy);
     });
     box(525,377,278,24,pale);
-    text('MONTHLY MORTGAGE',536,385,10,'F2',blue);
+    text('Monthly mortgage',536,385,10,'F2',blue);
     text(data.tenure,536,358,10,'F1',muted);
     data.mortgage.forEach(([label,amount],i)=>{
       const y=285-i*66;
@@ -151,16 +151,13 @@
     data.totals.forEach(({label,value,balance},i)=>{
       const x=39+i*386;
       box(x,104,378,54,pale);
-      text(label.toUpperCase(),x+12,143,8,'F2',blue);
+      text(label,x+12,143,8,'F2',blue);
       text(value,x+12,119,17,'F3');
       const color=balance.tone==='shortfall'?red:balance.tone==='remaining'?green:muted;
       text(balance.label,x+166,143,8,'F2',color);
       text(balance.value,x+166,119,15,'F3',color);
     });
     let y=96;
-    for(const line of wrap(data.notes,92).slice(0,2)){
-      if(line){text(line,40,y,8,'F1',navy);y-=10;}
-    }
     for(const note of data.footnotes){
       for(const line of wrap(note,130)){text(line,40,y,8,'F1',muted);y-=10;}
     }
@@ -214,7 +211,7 @@
       ['Max purchase price today',data.now],['Price if Max Loan covers 75%',data.benchmark],
       ...(data.targetToday?[['Target cash balance today',data.targetToday.text,balanceColor(data.targetToday)]]:[])
     ]);
-    table(data.projectionHeaders,data.projectionRows,data.target?[51,125,235,365,468,563,690]:[51,145,275,420,560,680],3);
+    table(data.projectionHeaders,data.projectionRows,data.target?[51,114,213,314,429,520,608,704]:[51,124,240,354,478,585,689],4);
     if(data.target){
       text('Target purchase price  '+data.targetPrice+'  /  '+data.timing,40,114,10,'F2');
       text('Negative amounts show cash top-up needed after CPF OA. Positive amounts show cash remaining.',40,95,9,'F1',muted);
