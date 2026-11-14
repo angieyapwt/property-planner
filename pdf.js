@@ -205,7 +205,7 @@
         const y=378-index*22;
         if(row.key || index%2===0) box(39,y-22,764,22,row.key?pale:stripe);
         text(row.label,columns[0],y-15,10,row.key?'F2':'F1');
-        row.values.forEach((value,i)=>text(value,columns[i+1],y-15,10,row.key||i===emphasisColumn?'F2':'F1'));
+        row.values.forEach((value,i)=>text(value,columns[i+1],y-15,10,row.key||i>=emphasisColumn?'F2':'F1'));
         if(row.balance)text(row.balance.text,columns.at(-1),y-15,10,'F2',balanceColor(row.balance));
       });
     }
@@ -214,13 +214,13 @@
       ['Max purchase price today',data.now],['Price if Max Loan covers 75%',data.benchmark],
       ...(data.targetToday?[['Target cash balance today',data.targetToday.text,balanceColor(data.targetToday)]]:[])
     ]);
-    table(data.projectionHeaders,data.projectionRows,data.target?[51,145,275,414,549,680]:[51,157,319,489,644],3);
+    table(data.projectionHeaders,data.projectionRows,data.target?[51,125,235,365,468,563,690]:[51,145,275,420,560,680],3);
     if(data.target){
       text('Target purchase price  '+data.targetPrice+'  /  '+data.timing,40,114,10,'F2');
       text('Negative amounts show cash top-up needed after CPF OA. Positive amounts show cash remaining.',40,95,9,'F1',muted);
     }
     text('Annual salary increment '+data.salaryIncrease+'. Monthly CPF OA and cash additions grow at this rate from Year 2.',40,74,9,'F1',muted);
-    text('Max Loan and target price are held fixed. Excludes CPF interest and investment returns. Amounts in SGD.',40,59,9,'F1',muted);
+    text(data.loanProjectionNote,40,59,9,'F1',muted);
     pages.push(ops.join('\n'));
 
     header('Purchase Cost Breakdown',data.propertyType+'  /  Funding shown for '+data.yearLabel);

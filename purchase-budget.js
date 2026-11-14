@@ -3,6 +3,7 @@
   'use strict';
   const isNode = typeof module !== 'undefined' && module.exports;
   const property = isNode ? require('./model') : root.PropertyModel;
+  const affordability = isNode ? require('./affordability-model') : root.AffordabilityModel;
   const defaults = {
     propertyType: 'private', maxLoan: '', oaBalance: '', cashBalance: '',
     monthlyOa: '', monthlyCash: '', salaryIncrease: '0', absdRate: '0', targetPrice: ''
@@ -60,10 +61,23 @@
     return low;
   }
 
-  function project(raw) {
+  function projectedLoan(assessment, propertyType, year, growth) {
+    const type = propertyType === 'private' ? 'condo' : propertyType;
+    const applicants = assessment.applicants.map(applicant => {
+      const {age} = affordability.applicantValues(applicant, assessment.settings.asOf);
+      return {
+        ...applicant, ageAuto:false, age:age === null ? '' : age + year,
+        income:(affordability.n(applicant.income) * growth).toFixed(2)
+      };
+    });
+    const result = affordability.assess({...assessment, applicants, settings:{...assessment.settings, property:type}});
+    const option = result.outcomes[type].standard;
+    return option.valid ? option.maxLoan : 0;
+  }
+
+  function project(raw, assessment) {
     const state = clean(raw);
-    const target = Number(state.targetPrice) > 0 ? purchaseCosts(Number(state.targetPrice), state) : null;
-    const benchmark = purchaseCosts(Math.floor(Number(state.maxLoan) / .75), state);
+    const targetPrice = Number(state.targetPrice);
     const annualGrowth = 1 + Number(state.salaryIncrease) / 100;
     let oa = Number(state.oaBalance);
     let cash = Number(state.cashBalance);
@@ -76,11 +90,19 @@
         oa = cents(oa + monthlyOa * 12);
         cash = cents(cash + monthlyCash * 12);
       }
-      const price = maxPrice(state, oa, cash);
+      const maxLoan = assessment
+        ? projectedLoan(assessment, state.propertyType, year, annualGrowth ** year)
+        : Number(state.maxLoan);
+      const funding = {...state, maxLoan};
+      const target = targetPrice > 0 ? purchaseCosts(targetPrice, funding) : null;
+      const price = maxPrice(funding, oa, cash);
       const targetBalance = target ? cents(cash - cashRequired(target, oa)) : null;
-      return {year, monthlyOa, oa, cash, price, targetBalance};
+      return {year, monthlyOa, oa, cash, price, maxLoan, target, targetBalance};
     });
-    return {state, target, benchmark, rows};
+    return {
+      state, target:rows[0].target, rows,
+      benchmark:purchaseCosts(Math.floor(rows[0].maxLoan / .75), {...state, maxLoan:rows[0].maxLoan})
+    };
   }
 
   function signedBalance(amount) {
@@ -89,15 +111,18 @@
     return {text:format(0), tone:'budget-funded'};
   }
 
-  function reportData(raw, selectedYear) {
-    const {state, target, benchmark, rows} = project(raw);
+  function reportData(raw, selectedYear, assessment) {
+    const {state, benchmark, rows} = project(raw, assessment);
     const year = rows[selectedYear] || rows[0];
+    const target = year.target;
     const firstCovered = target && rows.find(row => row.targetBalance >= 0);
     const timing = !target ? 'Enter a target price to track the funding gap.'
       : firstCovered ? 'Target funded ' + (firstCovered.year === 0 ? 'now' : 'by Year ' + firstCovered.year) + '.'
       : 'Target still needs a top-up in Year 10.';
-    const available = purchaseCosts(year.price, state);
-    const scenarios = [benchmark, available, ...(target ? [target] : [])];
+    const funding = {...state, maxLoan:year.maxLoan};
+    const available = purchaseCosts(year.price, funding);
+    const loanBenchmark = purchaseCosts(Math.floor(year.maxLoan / .75), funding);
+    const scenarios = [loanBenchmark, available, ...(target ? [target] : [])];
     const costLines = [
       ['Purchase price', 'price'], ['Loan used', 'loan'], ['Downpayment (25%)', 'downpayment'],
       ['Extra downpayment above 25%', 'extraEquity'], ['Buyer’s Stamp Duty (BSD)', 'bsd'],
@@ -108,18 +133,21 @@
     return {
       state, year, target, timing, now:format(rows[0].price), benchmark:format(benchmark.price),
       salaryIncrease: Number(state.salaryIncrease) + '%',
+      loanProjectionNote: assessment
+        ? 'Each year-end Max Loan uses projected salary and age, with other lending inputs held fixed.'
+        : 'Max Loan is held fixed. Link an Affordability Assessment to project future loan limits.',
       propertyType:propertyNames[state.propertyType], targetToday:target ? signedBalance(rows[0].targetBalance) : null,
       yearLabel:period(year.year), affordablePrice:format(year.price),
-      projectionHeaders:['When','Monthly CPF OA','Accumulated CPF OA','Cash savings','Max purchase price',...(target ? ['Target cash balance'] : [])],
+      projectionHeaders:['When','Monthly CPF OA','Accumulated CPF OA','Cash savings','Max Loan','Max purchase price',...(target ? ['Target cash balance'] : [])],
       projectionRows:rows.map(row => ({
-        year:row.year, label:period(row.year), values:[row.monthlyOa,row.oa,row.cash,row.price].map(format),
+        year:row.year, label:period(row.year), values:[row.monthlyOa,row.oa,row.cash,row.maxLoan,row.price].map(format),
         balance:target ? signedBalance(row.targetBalance) : null, key:row.year === 0
       })),
       costHeaders:['Amount','Loan benchmark','Affordable · '+period(year.year),...(target ? ['At target price'] : [])],
       costRows:costLines.filter(([, key]) => key !== 'extraEquity' || scenarios.some(costs => costs.extraEquity > 0))
         .map(([label, key]) => ({label, key:key === 'outlay', values:scenarios.map(costs => format(typeof key === 'function' ? key(costs) : costs[key]))})),
       targetForYear: target ? signedBalance(year.targetBalance) : null,
-      cash:format(year.cash), oa:format(year.oa), maxLoan:format(Number(state.maxLoan)),
+      cash:format(year.cash), oa:format(year.oa), maxLoan:format(year.maxLoan),
       targetPrice:target ? format(target.price) : '',
       noPurchase:year.price === 0 ? 'No purchase fits the available cash and CPF OA for '+period(year.year).toLowerCase()+'. Check your balances and the minimum cash needed.' : ''
     };
@@ -161,7 +189,7 @@
 
   function render() {
     const selectedYear = Number($('purchaseBudgetYear').value);
-    const data = reportData(state, selectedYear);
+    const data = reportData(state, selectedYear, linked ? root.EstateAffordability.getState() : null);
     $('purchaseBudgetNow').textContent = data.now;
     $('purchaseBudgetBenchmark').textContent = data.benchmark;
     showBalance($('purchaseBudgetTarget'), data.targetToday);
@@ -169,11 +197,12 @@
     $('purchaseBudgetTargetHeading').hidden = !data.target;
     $('purchaseBudgetProjection').innerHTML = data.projectionRows.map(row =>
       `<tr data-budget-year="${row.year}" class="${row.year === selectedYear ? 'budget-selected' : ''}"><th scope="row"><button type="button" class="budget-year-button" aria-label="Show purchase budget for ${row.label}" aria-pressed="${row.year === selectedYear}">${row.label}</button></th>` +
-      row.values.map((value,index) => index === 3 ? `<td><strong>${value}</strong></td>` : `<td>${value}</td>`).join('') +
+      row.values.map((value,index) => index >= 3 ? `<td><strong>${value}</strong></td>` : `<td>${value}</td>`).join('') +
       (row.balance ? `<td class="${row.balance.tone}">${row.balance.text}</td>` : '') + '</tr>').join('');
 
     $('purchaseBudgetCostsTitle').textContent = 'Purchase cost breakdown · ' + data.yearLabel;
     $('purchaseBudgetYearPrice').textContent = data.affordablePrice;
+    $('purchaseBudgetYearLoan').textContent = data.maxLoan;
     $('purchaseBudgetYearTargetTile').hidden = !data.targetForYear;
     showBalance($('purchaseBudgetYearTarget'), data.targetForYear);
     $('purchaseBudgetCostHead').innerHTML = data.costHeaders.map(label => `<th scope="col">${label}</th>`).join('');
@@ -275,7 +304,7 @@
 
   $('purchaseBudgetPdf').addEventListener('click', () => {
     if (!form.reportValidity()) return;
-    const data = reportData(state, Number($('purchaseBudgetYear').value));
+    const data = reportData(state, Number($('purchaseBudgetYear').value), linked ? root.EstateAffordability.getState() : null);
     const filename = root.PropertyPdf.filename('Purchase Budget').replace('Property Planner - ','Estate Basics - ');
     download(root.PropertyPdf.purchaseBudget(data), 'application/pdf', filename+'.pdf');
   });
