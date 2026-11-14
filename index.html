@@ -9,10 +9,10 @@
   <link rel="stylesheet" href="styles.css?v=20261028-1">
   <link rel="stylesheet" href="theme-blue.css?v=20261028-2">
   <link rel="stylesheet" href="affordability.css?v=20261110-1">
-  <script src="model.js?v=client-4" defer></script><script src="affordability-model.js?v=assessment-3" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=purchase-budget-2" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=client-4" defer></script>
+  <script src="model.js?v=client-4" defer></script><script src="affordability-model.js?v=assessment-3" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=purchase-budget-3" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=client-4" defer></script>
   <script src="affordability.js?v=purchase-budget-2" defer></script>
   <link rel="stylesheet" href="purchase-budget.css?v=3">
-  <script src="purchase-budget.js?v=3" defer></script>
+  <script src="purchase-budget.js?v=4" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-5">
   <script src="others.js?v=20261028-9" defer></script>
   <script src="combined-report.js?v=20261028-6" defer></script>
@@ -127,6 +127,7 @@
           <label class="field"><span class="field-label">Cash savings available today (SGD)</span><input name="cashBalance" type="text" inputmode="numeric" data-currency></label>
           <label class="field"><span class="field-label">Monthly CPF OA added (SGD)</span><input name="monthlyOa" type="text" inputmode="numeric" data-currency></label>
           <label class="field"><span class="field-label">Monthly cash saved (SGD)</span><input name="monthlyCash" type="text" inputmode="numeric" data-currency></label>
+          <label class="field"><span class="field-label">Annual salary increment (%)</span><input name="salaryIncrease" type="number" min="0" max="100" step="0.01" inputmode="decimal"><span class="hint">For this projection, monthly CPF OA added and monthly cash saved grow by this percentage after each year.</span></label>
           <label class="field"><span class="field-label">Applicable ABSD rate (%)</span><input name="absdRate" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="hint">Enter 0 if ABSD does not apply.</span></label>
           <label class="field"><span class="field-label">Target purchase price (optional, SGD)</span><input name="targetPrice" type="text" inputmode="numeric" data-currency></label>
         </form>
@@ -169,7 +170,7 @@
       </section>
       <div class="aff-sources">
         <p>Assumes a first bank housing loan capped at 75% of the price, with valuation equal to price. The cash estimate includes at least 5% of the price plus agent and miscellaneous fees. Stamp duty may need to be paid in cash before CPF reimbursement.</p>
-        <p>Projections hold your Max Loan, monthly contributions and target price constant. Year 1 is after 12 months. Balances grow by the amounts entered each month, excluding CPF interest and investment returns.</p>
+        <p>Year 1 uses today's monthly contributions. From Year 2, CPF OA additions and cash savings grow by the annual salary increment as a planning estimate. Max Loan and target price stay fixed. The projection excludes CPF interest and investment returns.</p>
         <p>A negative target cash balance shows the top-up needed after using eligible CPF OA. A positive balance shows the cash left over.</p>
         <div class="source-links"><a href="https://www.iras.gov.sg/quick-links/tax-rates/stamp-duty" target="_blank" rel="noopener">IRAS stamp duty rates</a><a href="https://www.cpf.gov.sg/service/article/which-property-related-fees-can-i-use-my-cpf-savings-for" target="_blank" rel="noopener">CPF rules for purchase fees</a><a href="https://www.moneysense.gov.sg/buying-a-property-how-much-can-you-afford/" target="_blank" rel="noopener">MoneySense bank loan limits</a></div>
       </div>

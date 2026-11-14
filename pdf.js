@@ -219,8 +219,8 @@
       text('Target purchase price  '+data.targetPrice+'  /  '+data.timing,40,114,10,'F2');
       text('Negative amounts show cash top-up needed after CPF OA. Positive amounts show cash remaining.',40,95,9,'F1',muted);
     }
-    text('Year 1 is after 12 months. Loan, monthly contributions and target price are held constant.',40,74,9,'F1',muted);
-    text('Projection excludes CPF interest and investment returns. All amounts are in SGD.',40,59,9,'F1',muted);
+    text('Annual salary increment '+data.salaryIncrease+'. Monthly CPF OA and cash additions grow at this rate from Year 2.',40,74,9,'F1',muted);
+    text('Max Loan and target price are held fixed. Excludes CPF interest and investment returns. Amounts in SGD.',40,59,9,'F1',muted);
     pages.push(ops.join('\n'));
 
     header('Purchase Cost Breakdown',data.propertyType+'  /  Funding shown for '+data.yearLabel);

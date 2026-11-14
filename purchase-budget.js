@@ -5,7 +5,7 @@
   const property = isNode ? require('./model') : root.PropertyModel;
   const defaults = {
     propertyType: 'private', maxLoan: '', oaBalance: '', cashBalance: '',
-    monthlyOa: '', monthlyCash: '', absdRate: '0', targetPrice: ''
+    monthlyOa: '', monthlyCash: '', salaryIncrease: '0', absdRate: '0', targetPrice: ''
   };
   const cents = amount => Math.round(amount * 100) / 100;
   const money = new Intl.NumberFormat('en-SG', {style:'currency', currency:'SGD', maximumFractionDigits:0});
@@ -15,14 +15,16 @@
   const amountKeys = Object.keys(defaults).filter(key => key !== 'propertyType');
   const parse = value => String(value ?? '').replace(/[$,\s]/g,'');
   const withinRange = (value,key) => value === '' || (/^\d+(?:\.\d+)?$/.test(value) &&
-    Number(value) <= (key === 'absdRate' ? 100 : 1e9));
+    Number(value) <= (key === 'absdRate' || key === 'salaryIncrease' ? 100 : 1e9));
 
   function clean(raw = {}) {
     const state = {...defaults};
     if (['hdb', 'ec', 'private'].includes(raw.propertyType)) state.propertyType = raw.propertyType;
     for (const key of amountKeys) {
       const value = parse(raw[key]);
-      if (value && withinRange(value,key)) state[key] = String(Math.round(Number(value)));
+      if (value && withinRange(value,key)) {
+        state[key] = String(key === 'salaryIncrease' ? cents(Number(value)) : Math.round(Number(value)));
+      }
     }
     return state;
   }
@@ -62,10 +64,18 @@
     const state = clean(raw);
     const target = Number(state.targetPrice) > 0 ? purchaseCosts(Number(state.targetPrice), state) : null;
     const benchmark = purchaseCosts(Math.floor(Number(state.maxLoan) / .75), state);
-    const monthlyOa = Number(state.monthlyOa);
+    const annualGrowth = 1 + Number(state.salaryIncrease) / 100;
+    let oa = Number(state.oaBalance);
+    let cash = Number(state.cashBalance);
     const rows = Array.from({length: 11}, (_, year) => {
-      const oa = cents(Number(state.oaBalance) + monthlyOa * year * 12);
-      const cash = cents(Number(state.cashBalance) + Number(state.monthlyCash) * year * 12);
+      // The first raise is after 12 months, so Year 1 uses today's monthly savings.
+      const growth = annualGrowth ** Math.max(0, year - 1);
+      const monthlyOa = cents(Number(state.monthlyOa) * growth);
+      const monthlyCash = cents(Number(state.monthlyCash) * growth);
+      if (year > 0) {
+        oa = cents(oa + monthlyOa * 12);
+        cash = cents(cash + monthlyCash * 12);
+      }
       const price = maxPrice(state, oa, cash);
       const targetBalance = target ? cents(cash - cashRequired(target, oa)) : null;
       return {year, monthlyOa, oa, cash, price, targetBalance};
@@ -97,6 +107,7 @@
     ];
     return {
       state, year, target, timing, now:format(rows[0].price), benchmark:format(benchmark.price),
+      salaryIncrease: Number(state.salaryIncrease) + '%',
       propertyType:propertyNames[state.propertyType], targetToday:target ? signedBalance(rows[0].targetBalance) : null,
       yearLabel:period(year.year), affordablePrice:format(year.price),
       projectionHeaders:['When','Monthly CPF OA','Accumulated CPF OA','Cash savings','Max purchase price',...(target ? ['Target cash balance'] : [])],
