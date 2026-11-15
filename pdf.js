@@ -118,9 +118,9 @@
         : escape(value);
       ops.push('BT /'+font+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+encoded+') Tj ET');
     }
-    function right(value,x,y,color){
+    function right(value,x,y,color,font){
       const width=[...ascii(value)].reduce((sum,ch)=>sum+(/[,. ]/.test(ch)?2.5:5),0);
-      text(value,x-width,y,9,'F1',color);
+      text(value,x-width,y,9,font,color);
     }
     box(0,496,842,99,navy);
     text('Estate Basics',39,568,11,'F2','0.75 0.85 1');
@@ -138,11 +138,12 @@
     box(39,377,470,24,pale);
     text('Purchase & funding',50,385,10,'F1',blue);
     const rowSpacing=Math.min(15,195/Math.max(data.purchase.length-1,1));
-    data.purchase.forEach(({label,value,alert},i)=>{
+    data.purchase.forEach(({label,value,bold,alert},i)=>{
       const y=361-i*rowSpacing;
+      const font=bold?'F2':'F1', color=alert?red:navy;
       if(i%2===0)box(39,y-3,470,rowSpacing-1,'0.976 0.983 0.996');
-      text(label,50,y,9,'F1',alert?red:navy);
-      right(value,498,y,alert?red:navy);
+      text(label,50,y,9,font,color);
+      right(value,498,y,color,font);
     });
     box(525,377,278,24,pale);
     text('Monthly mortgage',536,385,10,'F2',blue);
@@ -162,7 +163,7 @@
       text(balance.label,x+166,143,8,'F2',color);
       text(balance.value,x+166,119,15,'F3',color);
     });
-    let y=96;
+    let y=53+(data.footnotes.length-1)*12;
     for(const note of data.footnotes){
       const size=Math.min(8,760/(ascii(note).length*.75));
       text(note,40,y,size,'F1',muted);

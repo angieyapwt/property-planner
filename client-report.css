@@ -41,7 +41,9 @@
 .client-totals .remaining { color: #166044; }
 .client-totals .shortfall { color: #9a3141; }
 .client-preview-footer { font-size: 11px; color: #516783; }
-.client-credit { border-top: 1px solid #dbe5f3; padding-top: 10px; }
+.client-preview-footer p { margin: 0; }
+.client-preview-footer p + p { margin-top: 4px; }
+.client-credit { border-top: 1px solid #dbe5f3; padding-top: 5px; }
 .workspace-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .topbar nav.workspace-actions { gap: 8px; }
 .workspace-actions .button { padding: 10px 13px; font-size: 12px; }

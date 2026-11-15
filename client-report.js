@@ -103,13 +103,13 @@
         ...(hasLoan ? [row('75% loan on purchase price',priceLoan)] : []),
         ...(hasLoan && lowValuation ? [
           row('75% loan on valuation',valuationLoan,false,true),
-          row('Cash top-up from lower valuation',buy.loanGap,true,true)
+          row('Cash top-up from lower valuation',buy.loanGap,false,true)
         ] : []),
-        ...(hasLoan ? [{label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',value:downpaymentSplit,bold:true}] : []),
-        ...(bankLoan ? [row('5% Cash',buy.price*.05,true)] : []),
+        ...(hasLoan ? [{label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',value:downpaymentSplit}] : []),
+        ...(bankLoan ? [row('5% Cash',buy.price*.05)] : []),
         ...(hasLoan && buy.maxLoan>buy.loan ? [row('Loan Shortfall',buy.maxLoan-buy.loan,false,true)] : []),
         ...(buy.cov > 0 ? [row('Cash over valuation',buy.cov)] : []),
-        {label:'Stamp duty (BSD + ABSD)',value:money(buy.bsd)+' + '+money(buy.absd)+' = '+money(buy.stampDutyTotal),bold:true},
+        {label:'Stamp duty (BSD + ABSD)',value:money(buy.bsd)+' + '+money(buy.absd)+' = '+money(buy.stampDutyTotal)},
         row('Legal fees',Number(resolved.legal)),
         row('Miscellaneous fees',Number(resolved.misc)),
         row(d.agentNote?'Agent service fee *':'Agent service fee',buy.fee),
@@ -256,7 +256,7 @@
       </dl></section><section><h4>Monthly mortgage</h4><p>${esc(data.tenure)}</p><dl class="client-mortgage">${pairs(data.mortgage)}</dl>
       </section></div>
       <div class="client-highlights client-totals">${data.totals.map(({label,value,balance})=>`<dl><div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div><div class="client-balance ${balance.tone}"><dt>${esc(balance.label)}</dt><dd>${esc(balance.value)}</dd></div></dl>`).join('')}</div>
-      ${data.footnotes.map(note=>'<p class="client-preview-footer">'+esc(note)+'</p>').join('')}<p class="client-preview-footer client-credit">${esc(data.preparedBy)}</p>`;
+      <div class="client-preview-footer">${data.footnotes.map(note=>'<p>'+esc(note)+'</p>').join('')}<p class="client-credit">${esc(data.preparedBy)}</p></div>`;
   }
   function update(event){
     const input = event.target;
