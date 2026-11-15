@@ -57,16 +57,19 @@
       const cpfUsed=Math.min(n(d.buyCpf),Math.max(cpfEligible-grantUsed,0));
       const cashNeeded=cashOnly+Math.max(cpfEligible-grantUsed-cpfUsed,0);
       const loanGap=loanType==='No loan'?0:Math.max(price*.75-valuation*.75,0);
-      const downRows=loanType==='No loan'?[row('Purchase without a loan',price,'guide')]:loanType==='HDB loan'?
-        [row('25% downpayment by cash / CPF',basis*.25,'guide')]:[row('20% downpayment by cash / CPF',basis*.20,'guide'),row('5% cash downpayment',cashDown,'guide')];
+      const downRows=loanType==='No loan'?[row('Purchase without a loan',price,'guide')]:[
+        row('25% downpayment by cash / CPF',basis*.25,'guide'),
+        ...(loanType==='Bank loan'?[row('5% cash downpayment',cashDown,'guide')]:[])
+      ];
       buy={price,valuation,basis,loan,maxLoan,loanUsed,paydown,cov,loanGap,bsd,absd,stampDutyTotal,fee,requirement,grantUsed,cpfUsed,cashOnly,cashNeeded,
-        rows:[row('Purchase price',price),row('Valuation / market value',valuation),...downRows,row('Cash-over-valuation (cash only)',cov,'guide'),
-          row('Maximum loan at 75% of lower price / valuation',maxLoan,'guide'),row('Loan used before paydown',-loan),
+        rows:[row('Purchase price',price),row('Valuation / market value',valuation),
+          row('Maximum loan at 75% of lower price / valuation',maxLoan,'guide'),...(loanType==='No loan'?[]:[row('75% loan of property price',price*.75,'guide')]),
+          row('Cash top-up from lower valuation',loanGap,'guide'),...(maxLoan>loan?[row('Loan Shortfall',maxLoan-loan,'guide')]:[]),
           ...(paydownApplicable?[row('Second HDB loan proceeds paydown',paydown),row('Net loan after paydown',-loanUsed,'guide')]:[]),
-          row('Cash top up for Loan',loanGap,'guide'),...(maxLoan>loan?[row('Additional approved-loan shortfall',maxLoan-loan,'guide')]:[]),
+          row('Cash-over-valuation (cash only)',cov,'guide'),...downRows,
           row('Stamp duty basis',stampBasis,'guide'),row('Buyer stamp duty',bsd),row('ABSD ('+n(d.absdRate)+'%)',absd),
           row('Total Stamp Duty',stampDutyTotal,'subtotal'),row('Legal fee',legal),
-          row('Miscellaneous fee (cash only)',misc),row(d.buyCommissionGst===false?'Agent commission (without GST, cash only)':'Commission including GST (cash only)',fee),row(isHdb?'Purchase requirement before CPF / grants':'Purchase requirement before CPF',requirement,'subtotal'),
+          row('Miscellaneous fee (cash only)',misc),row('Agent commission',fee),row(isHdb?'Purchase requirement before CPF / grants':'Purchase requirement before CPF',requirement,'subtotal'),
           ...(isHdb?[row('Housing grants used',-grantUsed)]:[]),row('CPF OA used',-cpfUsed),row('Cash needed before sale proceeds / savings',cashNeeded,'total')]};
     }
     const savings=buy?n(d.cashSavings):0,proceeds=sale?sale.proceeds:0;
@@ -83,8 +86,8 @@
           r.bold=r.label==='Selling price';
           r.red=['Outstanding HIP','Resale levy','Bank penalty'].includes(r.label);
         } else if(group.title==='Purchase breakdown') {
-          r.bold=['Purchase price','20% downpayment by cash / CPF','5% cash downpayment','Maximum loan at 75% of lower price / valuation','Buyer stamp duty','Total Stamp Duty','Purchase requirement before CPF','Purchase requirement before CPF / grants','Net loan after paydown'].includes(r.label)||r.label.startsWith('ABSD (');
-          r.red=['Cash top up for Loan','Second HDB loan proceeds paydown'].includes(r.label)||(r.label==='Valuation / market value'&&buy.valuation<buy.price);
+          r.bold=['Purchase price','25% downpayment by cash / CPF','5% cash downpayment','Maximum loan at 75% of lower price / valuation','75% loan of property price','Cash top-up from lower valuation','Loan Shortfall','Buyer stamp duty','Total Stamp Duty','Agent commission','Purchase requirement before CPF','Purchase requirement before CPF / grants','Net loan after paydown','Cash needed before sale proceeds / savings'].includes(r.label)||r.label.startsWith('ABSD (');
+          r.red=['Maximum loan at 75% of lower price / valuation','Cash top-up from lower valuation','Loan Shortfall','Second HDB loan proceeds paydown'].includes(r.label)||(r.label==='Valuation / market value'&&buy.valuation<buy.price);
         } else r.bold=r.kind==='total';
       }
     }

@@ -15,10 +15,10 @@
   }
   const pct=v=>(v*100).toFixed(1)+'%';
   let state=M.defaults(),active='planner',lastResult;
-  try{const saved=localStorage.getItem(KEY);if(saved)state=M.cleanState(JSON.parse(saved));}catch{}
+  try{const saved=window.EstateDraft.getItem(KEY);if(saved)state=M.cleanState(JSON.parse(saved));}catch{}
   state=M.simplifyState(state);state.settings.term='standard';state.settings.maxMaturity='65';
-  const field=(i,key,label,hint='',type='text')=>`<label class="field"><span class="field-label">${label}</span>${type==='money'?`<div class="money-wrap"><span aria-hidden="true">$</span><input inputmode="decimal" maxlength="18" data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${M.has(state.applicants[i][key])?whole(state.applicants[i][key]):''}"></div>`:`<input type="${type==='dob'?'text':type}" ${type==='number'?'min="0" max="100" step="1"':''} ${type==='dob'?'data-dob-input inputmode="numeric" maxlength="11" placeholder="DDMMYYYY" autocomplete="bday"':''} data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${esc(type==='dob'?DobInput.format(state.applicants[i][key]):state.applicants[i][key])}" ${key==='name'?'maxlength="60"':''}>`}${hint?`<span class="hint">${hint}</span>`:''}</label>`;
-  function persist(){try{localStorage.setItem(KEY,JSON.stringify(state));$('affSaveStatus').textContent='Assessment saved on this device. It stays available across property types and tabs.';}catch{$('affSaveStatus').textContent='Browser storage is unavailable. Download a Property Planner backup to retain this assessment.';}}
+  const field=(i,key,label,hint='',type='text')=>`<label class="field"><span class="field-label">${label}</span>${type==='money'?`<div class="money-wrap"><span aria-hidden="true">$</span><input data-live-price inputmode="decimal" maxlength="18" data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${M.has(state.applicants[i][key])?whole(state.applicants[i][key]):''}"></div>`:`<input type="${type==='dob'?'text':type}" ${type==='number'?'min="0" max="100" step="1"':''} ${type==='dob'?'data-dob-input inputmode="numeric" maxlength="11" placeholder="DDMMYYYY" autocomplete="bday"':''} data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${esc(type==='dob'?DobInput.format(state.applicants[i][key]):state.applicants[i][key])}" ${key==='name'?'maxlength="60"':''}>`}${hint?`<span class="hint">${hint}</span>`:''}</label>`;
+  function persist(){try{window.EstateDraft.setItem(KEY,JSON.stringify(state));$('affSaveStatus').textContent='Assessment stays in this window.';}catch{$('affSaveStatus').textContent='Browser storage is unavailable. Use Save all to device to keep a copy.';}}
   function renderApplicants(){
     $('applicants').innerHTML=state.applicants.map((a,i)=>`<section class="form-section applicant-card"><div class="applicant-title"><div><span class="eyebrow">APPLICANT ${i+1}</span><h3>${esc(a.name||'Applicant '+(i+1))}</h3></div>${state.applicants.length>1?`<button type="button" class="text-button remove-applicant" data-remove="${i}">Remove applicant</button>`:''}</div><div class="form-grid">
       ${field(i,'name','Applicant name (optional)')}${field(i,'dob','Date of birth (optional)','','dob')}
@@ -62,7 +62,7 @@
     const {loan,months,rates}=loanComparisonInputs();
 
     if(document.activeElement!==$('comparisonLoan')){
-      $('comparisonLoan').value=settings.comparisonLoan||(loan>0?String(loan):'');
+      $('comparisonLoan').value=settings.comparisonLoan ? whole(settings.comparisonLoan) : loan>0 ? whole(loan) : '';
     }
     if(document.activeElement!==$('comparisonYears')){
       $('comparisonYears').value=settings.comparisonYears||(months>0?number(months/12):'');
@@ -144,7 +144,6 @@
       ['Monthly cash gap after estimated OA',r.actualEntered?money(r.cashMonthly,2):'—']
     ];
     $('repaymentSummary').innerHTML=`<p class="summary-assessment-status ${r.within?'within':'outside'}" role="status">${esc(status)}</p><dl class="property-summary-lines">${rows.map(([label,value,kind])=>`<div class="${kind||''}"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl>`;
-    $('exportCombinedAssessment').disabled=!r.option.valid||!window.EstatePlannerBridge?.getReportData();$('affCombinedHint').textContent=$('exportCombinedAssessment').disabled?'Complete the assessment and enter a Property Planner calculation to enable combined export.':'Combined export is available: both current calculations will be included.';
     $('applyAffLoan').disabled=!r.within||!r.option.valid;$('exportAffPdf').disabled=!r.option.valid;if($('amortisation').open)renderAmortisation();
     renderLoanComparison();
   }
@@ -179,7 +178,7 @@
   for(const [key,id] of Object.entries(settingIds)){
     const input=$(id);
     input.addEventListener('input',()=>{
-      state.settings[key]=key==='actualRate'?readQuotedRate(input):input.value;
+      state.settings[key]=key==='actualRate'?readQuotedRate(input):key==='comparisonLoan'?input.value.replace(/[$,\s]/g,''):input.value;
       renderResults();
       persist();
     });
@@ -211,13 +210,6 @@
   }
   $('amortisation').addEventListener('toggle',()=>{if($('amortisation').open)renderAmortisation();});
   $('applyAffLoan').addEventListener('click',()=>{const r=lastResult;if(r.within)window.EstatePlannerBridge?.applyLoan(state.settings.property==='hdb'?'hdb':'condo',M.propertyBudget(r.loan,r.option.ltv).price,M.propertyBudget(r.loan,r.option.ltv).price,r.loan);});
-  $('saveAffDevice').addEventListener('click',()=>{
-    persist();const name=state.name||window.EstatePlannerBridge?.getName()||'Assessment',now=new Date();
-    const bytes=JSON.stringify({type:'estate-basics-affordability',version:1,savedAt:now.toISOString(),assessment:M.cleanState(state)},null,2);
-    const url=URL.createObjectURL(new Blob([bytes],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=PropertyPdf.filename(name,now).replace('Property Planner - ','Affordability Assessment - ')+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
-    $('affSaveStatus').textContent='Assessment saved on this device and downloaded as a restore file.';
-  });
-  $('restoreAffDevice').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>2000000)throw Error();const data=JSON.parse(await file.text());if(data.type!=='estate-basics-affordability'||data.version!==1||!Array.isArray(data.assessment?.applicants)||!data.assessment.applicants.length)throw Error();window.EstateAffordability.setState(data.assessment);$('affSaveStatus').textContent='Assessment restored and saved on this device.';}catch{$('affSaveStatus').textContent='Unable to restore. Choose a valid saved assessment JSON file.';}e.target.value='';});
   $('exportAffPdf').addEventListener('click',exportAssessment);
   for(const tab of tabs){$(tab+'Tab').addEventListener('click',()=>showTab(tab));$(tab+'Tab').addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const index=tabs.indexOf(tab),next=e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(index+(e.key==='ArrowLeft'?-1:1)+tabs.length)%tabs.length];showTab(next);$(next+'Tab').focus();}});}
   document.addEventListener('estate:show-tab',e=>showTab(e.detail));
@@ -236,7 +228,7 @@
       const {loan,months,rates:[rateOne,rateTwo]}=loanComparisonInputs();
       return {loan,months,rateOne,rateTwo,loanEntered:state.settings.comparisonLoan!==''};
     },
-    startFresh(){state=M.simplifyState(M.defaults());state.skipPlannerPrefill=true;$('amortisation').open=false;$('comparisonAmortisation').open=false;renderApplicants();syncSettings();renderResults();persist();},shareName(name,previous){if(!state.name||state.name===previous){state.name=String(name).slice(0,80);$('affName').value=state.name;persist();}},getReportData:reportData,getReportName:()=>state.name,getState:()=>M.cleanState(state),setState(raw){state=M.simplifyState(raw);state.settings.term='standard';state.settings.maxMaturity='65';renderApplicants();syncSettings();renderResults();persist();}};
+    startFresh(){state=M.simplifyState(M.defaults());state.skipPlannerPrefill=true;$('amortisation').open=false;$('loanCalculator').open=false;$('comparisonAmortisation').open=false;renderApplicants();syncSettings();renderResults();persist();},shareName(name,previous){if(!state.name||state.name===previous){state.name=String(name).slice(0,80);$('affName').value=state.name;persist();}},getReportData:reportData,getReportName:()=>state.name,getState:()=>M.cleanState(state),setState(raw){state=M.simplifyState(raw);state.settings.term='standard';state.settings.maxMaturity='65';renderApplicants();syncSettings();renderResults();persist();}};
   setInterval(()=>{if(state.settings.asOfAuto!==false&&state.settings.asOf!==M.today()){state.settings.asOf=M.today();$('affDate').value=state.settings.asOf;renderResults();persist();}},60000);
   renderApplicants();syncSettings();renderResults();
 })();

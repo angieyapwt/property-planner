@@ -12,11 +12,12 @@
     loan:'', oa:'', cash:'', grant:'', absd:'0', legal:'', misc:'', agent:'',
     years:'', rateOne:'', rateTwo:'', notes:'', agentNote:'', splitCash:'', splitCpf:''
   };
+  const privateAgentNote = 'If co-broking is allowed by the seller’s agent, no commission is payable by you. Otherwise, it is 1% + 9% GST.';
   const amounts = ['price','valuation','loan','oa','cash','grant','legal','misc','agent','splitCash','splitCpf'];
   const rateLabels = ['Indicative Current Interest Rate','Stress Test Interest Rate'];
   function clean(raw = {}){
     const state = {...defaults};
-    state.type = raw.type === 'hdb' ? 'hdb' : 'condo';
+    state.type = ['hdb','ec'].includes(raw.type) ? raw.type : 'condo';
     if (['Bank loan','HDB loan','No loan'].includes(raw.financing)) state.financing = raw.financing;
     if (state.type !== 'hdb' && state.financing === 'HDB loan') state.financing = 'Bank loan';
     for (const [key, limit] of [['client',65],['address',85],['notes',150],['agentNote',120]]) {
@@ -45,8 +46,6 @@
     const lowValuation = buy.valuation < buy.price;
     const priceLoan = buy.price*.75;
     const valuationLoan = buy.valuation*.75;
-    const topUpOperator = Math.round(priceLoan)-Math.round(valuationLoan) === Math.round(buy.loanGap) ? ' = ' : ' ≈ ';
-    const topUpCalculation = money(priceLoan)+' − '+money(valuationLoan)+topUpOperator+money(buy.loanGap);
     const share = bankLoan ? .20 : .25;
     const eligibleDownpayment = buy.basis*share;
     const grantForDownpayment = Math.min(buy.grantUsed,eligibleDownpayment);
@@ -82,8 +81,8 @@
     return {
       valid, split:{visible:hasLoan,label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',cash:splitCash,cpf:splitCpf,error:splitError},
       client:d.client.trim(), address:d.address.trim(), title, date,
-      preparedBy:'ESTATE BASICS / PREPARED BY ANGIE YAP AND AMETHYST TEO',
-      property:d.type === 'hdb' ? 'HDB resale purchase' : 'Private residential purchase',
+      preparedBy:'PREPARED BY ANGIE YAP AND AMETHYST TEO',
+      property:d.type === 'hdb' ? 'HDB resale purchase' : d.type === 'ec' ? 'EC purchase' : 'Private property purchase',
       highlights:[
         ['Loan Amount', money(buy.loanUsed)],
         ['Cash available', d.cash === '' ? 'Not entered' : money(Number(d.cash))],
@@ -95,12 +94,12 @@
         ...(hasLoan ? [row('75% loan on purchase price',priceLoan)] : []),
         ...(hasLoan && lowValuation ? [
           row('75% loan on valuation',valuationLoan,false,true),
-          {label:'Cash top-up from lower valuation',value:topUpCalculation,bold:true,alert:true}
+          row('Cash top-up from lower valuation',buy.loanGap,true,true)
         ] : []),
         ...(hasLoan ? [{label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',value:downpaymentSplit,bold:true}] : []),
         ...(bankLoan ? [row('5% Cash',buy.price*.05,true)] : []),
         ...(hasLoan && lowValuation && buy.maxLoan>buy.loanUsed ? [row('Additional loan shortfall',buy.maxLoan-buy.loanUsed,false,true)] : []),
-        ...(buy.cov > 0 ? [row('Cash over valuation',buy.cov,false,true)] : []),
+        ...(buy.cov > 0 ? [row('Cash over valuation',buy.cov)] : []),
         {label:'Stamp duty (BSD + ABSD)',value:money(buy.bsd)+' + '+money(buy.absd)+' = '+money(buy.stampDutyTotal),bold:true},
         row('Legal fees',Number(d.legal)),
         row('Miscellaneous fees',Number(d.misc)),
@@ -109,15 +108,15 @@
       ],
       footnotes:[
         ...(d.agentNote ? ['* Agent service fee: '+d.agentNote.trim()] : []),
-        ...(bankLoan && buy.loanUsed && rates.some(rate=>rate!=='') ? [
-          "* Indicative rate only. The final interest rate is subject to the bank's prevailing rates and approval at the point of loan application."
+        ...(bankLoan && buy.loanUsed && d.rateOne!=='' ? [
+          "^ Indicative rate only. The final interest rate is subject to the bank's prevailing rates and approval at the point of loan application."
         ] : [])
       ],
       tenure: !buy.loanUsed ? 'No mortgage payment' : months > 0
         ? 'Tenure: '+Math.floor(months/12)+' years'+(months%12?' '+months%12+' months':'')
         : 'Tenure: not entered',
       mortgage: buy.loanUsed ? rates.map((rate,i) => [
-        rateLabels[i]+(rate===''?'':' · '+percent.format(Number(rate))+'% p.a.'),
+        rateLabels[i]+(rate===''?'':' · '+percent.format(Number(rate))+'% p.a.')+(bankLoan && i === 0 && rate !== '' ? ' ^' : ''),
         rate!=='' && months>0 ? money(loans.amortize(buy.loanUsed,Number(rate),months).payment) : 'Not entered'
       ]) : [],
       totals:[
@@ -164,7 +163,7 @@
   let draft = {...defaults};
   const edited = new Set();
   try {
-    const saved = JSON.parse(localStorage.getItem(key) || '{}');
+    const saved = JSON.parse(root.EstateDraft.getItem(key) || '{}');
     draft = clean(saved.fields ?? saved);
     for (const name of saved.edited ?? []) if (Object.hasOwn(defaults,name)) edited.add(name);
   } catch {}
@@ -175,7 +174,7 @@
   const form = $('clientReportForm');
   form.innerHTML = `<div class="form-grid">
     ${text('client','Client name (optional)',65)}${text('address','Property address (optional)',85)}
-    <label class="field"><span class="field-label">Property type</span><select name="type"><option value="condo">Private residential</option><option value="hdb">HDB resale</option></select></label>
+    <label class="field"><span class="field-label">Property type</span><select name="type"><option value="hdb">HDB</option><option value="ec">EC</option><option value="condo">Private Property</option></select></label>
     <label class="field"><span class="field-label">Financing</span><select name="financing"><option>Bank loan</option><option>HDB loan</option><option>No loan</option></select></label>
     ${amountField('price','Purchase price')}${amountField('valuation','Indicative valuation (optional)')}
     ${amountField('loan','Approved loan amount (optional)')}${amountField('cash','Cash savings (optional)')}
@@ -194,7 +193,7 @@
   </div>`;
   const field = name => form.elements.namedItem(name);
   function persist(){
-    try { localStorage.setItem(key,JSON.stringify({fields:clean(draft),edited:[...edited]})); } catch {}
+    try { root.EstateDraft.setItem(key,JSON.stringify({fields:clean(draft),edited:[...edited]})); } catch {}
   }
   function sync(){
     for (const [name,value] of Object.entries(state)) {
@@ -214,6 +213,10 @@
     }
   }
   function render(){
+    if (!edited.has('agentNote')) {
+      state.agentNote = state.type === 'condo' ? privateAgentNote : '';
+      field('agentNote').value = state.agentNote;
+    }
     const data = build(state);
     syncSplit(data.split);
     const invalidField = !form.checkValidity();
@@ -226,10 +229,9 @@
     const unsupportedText = [data.client,data.address,...data.footnotes].some(value=>
       /[^\x20-\x7e–—‘’“”]/.test(value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'')));
     $('exportClientReport').disabled = !data.valid || invalidField || unsupportedText;
-    $('saveClientReportDevice').disabled = invalidField;
     $('clientReportStatus').textContent = invalidField ? 'Check the highlighted numeric fields.'
       : unsupportedText ? 'Use Latin-script text for the client name, address and agent fee footnote in the PDF.' : data.status;
-    $('clientReportPreview').innerHTML = `<header><p class="client-report-meta"><span>${esc(data.preparedBy)}</span><time>${esc(data.date)}</time></p><h3>${esc(data.title)}</h3><div>${esc(data.property)}</div></header>
+    $('clientReportPreview').innerHTML = `<header><p class="client-report-meta"><span>Estate Basics</span><time>${esc(data.date)}</time></p><h3>${esc(data.title)}</h3><div>${esc(data.property)}</div></header>
       ${data.client ? '<p class="client-prepared">Prepared for '+esc(data.client)+'</p>' : ''}
       ${data.address ? '<p class="client-prepared">'+esc(data.address)+'</p>' : ''}
       <dl class="client-highlights">${pairs(data.highlights)}</dl>
@@ -238,7 +240,7 @@
       </dl></section><section><h4>Monthly mortgage</h4><p>${esc(data.tenure)}</p><dl class="client-mortgage">${pairs(data.mortgage)}</dl>
       </section></div>
       <div class="client-highlights client-totals">${data.totals.map(({label,value,balance})=>`<dl><div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div><div class="client-balance ${balance.tone}"><dt>${esc(balance.label)}</dt><dd>${esc(balance.value)}</dd></div></dl>`).join('')}</div>
-      ${data.footnotes.map(note=>'<p class="client-preview-footer">'+esc(note)+'</p>').join('')}`;
+      ${data.footnotes.map(note=>'<p class="client-preview-footer">'+esc(note)+'</p>').join('')}<p class="client-preview-footer client-credit">${esc(data.preparedBy)}</p>`;
   }
   function update(event){
     const input = event.target;
@@ -300,13 +302,23 @@
   });
   $('refreshClientFigures').addEventListener('click',()=>refreshFromCalculators(true));
   root.EstateClientReport = {
+    getState:() => ({fields:clean(draft), edited:[...edited]}),
+    setState(saved){
+      draft=clean(saved.fields ?? saved);
+      edited.clear();
+      for (const name of saved.edited ?? Object.keys(defaults)) if (Object.hasOwn(defaults,name)) edited.add(name);
+      persist();
+      refreshFromCalculators();
+    },
+    getReportData(now){
+      if ($('clientReportView').hidden) refreshFromCalculators();
+      return $('exportClientReport').disabled ? null : build(state,now);
+    },
     startFresh(){
       draft = {...defaults};
       edited.clear();
-      edited.add('client');
       persist();
       refreshFromCalculators();
-      $('clientSaveStatus').textContent = '';
     }
   };
   function download(contents,type,extension,now){
@@ -320,33 +332,6 @@
     link.remove();
     setTimeout(()=>URL.revokeObjectURL(url),30000);
   }
-  $('saveClientReportDevice').addEventListener('click',()=>{
-    const now = new Date();
-    persist();
-    const saved = {type:'estate-basics-client-report',version:1,report:clean(state)};
-    download(JSON.stringify(saved,null,2),'application/json','.json',now);
-    $('clientSaveStatus').textContent = 'Client report downloaded as a restore file.';
-  });
-  $('chooseClientReportFile').addEventListener('click',()=>$('restoreClientReportDevice').click());
-  $('restoreClientReportDevice').addEventListener('change',async event=>{
-    const input = event.target;
-    const file = input.files[0];
-    if (!file) return;
-    try {
-      if (file.size > 2000000) throw Error();
-      const saved = JSON.parse(await file.text());
-      if (saved.type !== 'estate-basics-client-report' || saved.version !== 1 ||
-        !saved.report || Array.isArray(saved.report) || typeof saved.report !== 'object') throw Error();
-      draft = clean(saved.report);
-      for (const name of Object.keys(defaults)) edited.add(name);
-      persist();
-      refreshFromCalculators();
-      $('clientSaveStatus').textContent = 'Client report restored.';
-    } catch {
-      $('clientSaveStatus').textContent = 'Choose a saved Client Report JSON file.';
-    }
-    input.value = '';
-  });
   $('exportClientReport').addEventListener('click',()=>{
     const now = new Date(), data = build(state,now);
     if ($('exportClientReport').disabled) return;

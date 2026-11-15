@@ -24,10 +24,10 @@ const input={buyPrice:price,buyValuation:550000,loanType:'Bank loan',buyLoanAuto
 result=calculate('hdb-to-hdb',input);
 eq(result.buy.fee,8000);eq(result.sale.rows.find(r=>r.label==='Agent commission (without GST)').value,-18000);
 const bolds=result.buy.rows.filter(r=>r.bold).map(r=>r.label);
-assert.deepEqual(bolds,['Purchase price','20% downpayment by cash / CPF','5% cash downpayment','Maximum loan at 75% of lower price / valuation','Buyer stamp duty','ABSD (0%)','Total Stamp Duty','Purchase requirement before CPF / grants']);checks++;
+assert.deepEqual(bolds,['Purchase price','Maximum loan at 75% of lower price / valuation','75% loan of property price','Cash top-up from lower valuation','25% downpayment by cash / CPF','5% cash downpayment','Buyer stamp duty','ABSD (0%)','Total Stamp Duty','Agent commission','Purchase requirement before CPF / grants','Cash needed before sale proceeds / savings']);checks++;
 assert.deepEqual(result.sale.rows.filter(r=>r.bold).map(r=>r.label),['Selling price']);checks++;
 assert.deepEqual(result.sale.rows.filter(r=>r.red).map(r=>r.label),['Outstanding HIP','Resale levy','Bank penalty']);checks++;
-assert.deepEqual(result.buy.rows.filter(r=>r.red).map(r=>r.label),['Valuation / market value','Cash top up for Loan']);checks++;
+assert.deepEqual(result.buy.rows.filter(r=>r.red).map(r=>r.label),['Valuation / market value','Maximum loan at 75% of lower price / valuation','Cash top-up from lower valuation']);checks++;
 result=calculate('hdb-to-hdb',{...input,loanType:'HDB loan'});
 eq(result.buy.rows.find(r=>r.label==='Second HDB loan proceeds paydown').red,true);
 eq(result.buy.rows.find(r=>r.label==='Net loan after paydown').bold,true);

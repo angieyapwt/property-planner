@@ -41,6 +41,16 @@
 .client-totals .remaining { color: #166044; }
 .client-totals .shortfall { color: #9a3141; }
 .client-preview-footer { font-size: 11px; color: #516783; }
+.client-credit { border-top: 1px solid #dbe5f3; padding-top: 10px; }
+.workspace-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.topbar nav.workspace-actions { gap: 8px; }
+.workspace-actions .button { padding: 10px 13px; font-size: 12px; }
+.topbar:has(.workspace-actions) { height: auto; min-height: 92px; gap: 12px; padding-block: 14px; }
+[data-workspace-fresh] { white-space: nowrap; align-self: center; }
+@media (max-width: 720px) {
+  .topbar:has(.workspace-actions), footer:has(.workspace-actions) { flex-wrap: wrap; }
+  .workspace-actions { justify-content: flex-start; }
+}
 @media (max-width:900px) {
   .client-report-workspace { grid-template-columns: 1fr; }
 }

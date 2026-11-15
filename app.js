@@ -9,7 +9,7 @@
   const numericKeys=['salePrice','saleLoan','saleCpf','saleHip','saleLevy','saleSsd','salePenalty','saleLegal','saleMisc','saleRate','saleOverride','buyPrice','buyValuation','buyLoan','buyPaydown','buyCpf','buyGrant','buyLegal','buyMisc','buyRate','buyOverride','absdRate','cashSavings'];
   const boolKeys=['saleCommissionOn','buyCommissionOn','saleCommissionGst','buyCommissionGst','buyLoanAuto'];
   const knownKeys=[...numericKeys,...boolKeys,'loanType'];
-  let cases=[],drafts={},current,savingAvailable=true,deleteId=null,toastTimer;
+  let drafts={},current,savingAvailable=true,toastTimer;
   const assessmentSeeded=new Set();
   const sharedSession={buy:{},sell:{},cash:{}};
   const defaultInputs=scenario=>{const c=scenarios[scenario];return {saleLegal:c.sell==='condo'?3000:2500,saleMisc:1000,saleRate:2,saleCommissionOn:true,saleCommissionGst:true,buyLegal:c.buy==='condo'?3000:2500,buyMisc:1000,buyRate:1,buyCommissionOn:true,buyCommissionGst:true,buyLoanAuto:true,loanType:c.buy==='hdb'?'HDB loan':'Bank loan',absdRate:0};};
@@ -21,11 +21,11 @@
     for(const k of knownKeys){const v=r.inputs?.[k];if(v===undefined)continue;if(boolKeys.includes(k))inputs[k]=v!==false;else if(k==='loanType')inputs[k]=['HDB loan','Bank loan','No loan'].includes(v)?v:inputs[k];else inputs[k]=has(v)?String(Math.min(n(v),1e12)):'';}
     return {scenario:r.scenario,name:String(r.name??'').slice(0,80),notes:String(r.notes??'').slice(0,4000),inputs,...(r.affordability?{affordability:AffordabilityModel.cleanState(r.affordability)}:{}),...(r.others?{others:LeaseLtvModel.cleanState(r.others)}:{})};
   }
-  function loadStorage(){try{const raw=localStorage.getItem(STORAGE);if(!raw)return;const data=JSON.parse(raw);if(data.version!==1)return;cases=(Array.isArray(data.cases)?data.cases:[]).slice(0,500).map(r=>({...cleanRecord(r),id:String(r.id||crypto.randomUUID()),savedAt:isNaN(Date.parse(r.savedAt))?new Date().toISOString():r.savedAt}));if(data.drafts&&typeof data.drafts==='object'){for(const k of Object.keys(scenarios)){if(data.drafts[k])drafts[k]=cleanRecord(data.drafts[k]);}}if(data.current)current=cleanRecord(data.current);}catch{savingAvailable=false;}}
+  function loadStorage(){try{const raw=window.EstateDraft.getItem(STORAGE);if(!raw)return;const data=JSON.parse(raw);if(data.version!==1)return;if(data.drafts&&typeof data.drafts==='object'){for(const k of Object.keys(scenarios)){if(data.drafts[k])drafts[k]=cleanRecord(data.drafts[k]);}}if(data.current)current=cleanRecord(data.current);}catch{savingAvailable=false;}}
   function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),4300);}
-  function persist(){drafts[current.scenario]=structuredClone(current);try{localStorage.setItem(STORAGE,JSON.stringify({version:1,cases,drafts,current}));savingAvailable=true;$('draftStatus').textContent='Draft saved on this device.';return true;}catch{savingAvailable=false;$('draftStatus').textContent='Browser storage unavailable. Download a backup to keep your figures.';return false;}}
+  function persist(){drafts[current.scenario]=structuredClone(current);try{window.EstateDraft.setItem(STORAGE,JSON.stringify({version:1,drafts,current}));savingAvailable=true;$('draftStatus').textContent='Draft stays in this window.';return true;}catch{savingAvailable=false;$('draftStatus').textContent='Browser storage unavailable. Download a backup to keep your figures.';return false;}}
   function calculatedCommission(side){return commission(n(current.inputs[side==='buy'?'buyPrice':'salePrice']),current.inputs[side+'Rate'],current.inputs[side+'CommissionOn'],null,current.inputs[side+'CommissionGst']!==false);}
-  function moneyField(key,label,hint='',placeholder='0'){const raw=current.inputs[key];const value=key.endsWith('Override')&&!has(raw)?calculatedCommission(key.startsWith('sale')?'sale':'buy'):raw;return `<label class="field"><span class="field-label">${label}</span><div class="money-wrap"><span aria-hidden="true">$</span><input data-key="${key}" id="${key}" type="text" inputmode="decimal" maxlength="18" placeholder="${placeholder}" value="${has(value)?esc(n(value).toLocaleString('en-SG',{maximumFractionDigits:0})):''}" aria-label="${esc(label)}"></div>${hint?`<span class="hint">${hint}</span>`:''}</label>`;}
+  function moneyField(key,label,hint='',placeholder='0'){const raw=current.inputs[key];const value=key.endsWith('Override')&&!has(raw)?calculatedCommission(key.startsWith('sale')?'sale':'buy'):raw;return `<label class="field"><span class="field-label">${label}</span><div class="money-wrap"><span aria-hidden="true">$</span><input data-key="${key}" id="${key}" type="text" data-live-price inputmode="decimal" maxlength="18" placeholder="${placeholder}" value="${has(value)?esc(n(value).toLocaleString('en-SG',{maximumFractionDigits:0})):''}" aria-label="${esc(label)}"></div>${hint?`<span class="hint">${hint}</span>`:''}</label>`;}
   function selectField(key,label,options,hint=''){return `<label class="field"><span class="field-label">${label}</span><select data-key="${key}" id="${key}">${options.map(([value,text])=>`<option value="${esc(value)}" ${String(current.inputs[key])===String(value)?'selected':''}>${text}</option>`).join('')}</select>${hint?`<span class="hint">${hint}</span>`:''}</label>`;}
   function commissionFields(side){
     const enabled=current.inputs[side+'CommissionOn']!==false, gst=current.inputs[side+'CommissionGst']!==false;
@@ -94,7 +94,7 @@
     $('scenario').value=current.scenario;$('scenarioDescription').textContent=c.description;$('estimateName').value=current.name;$('notes').value=current.notes;
   }
   function metric(label,value){return `<div class="metric"><span>${label}</span><strong>${money(value)}</strong></div>`;}
-  function renderSummary(){syncCommissionFields();const v=calculate(current.scenario,current.inputs);$('primaryLabel').textContent=v.primaryLabel;$('primary').textContent=v.hasFigures?money(v.primary):'$—';$('saveEstimate').disabled=!v.hasFigures;$('exportPdf').disabled=!v.hasFigures;
+  function renderSummary(){syncCommissionFields();const v=calculate(current.scenario,current.inputs);$('primaryLabel').textContent=v.primaryLabel;$('primary').textContent=v.hasFigures?money(v.primary):'$—';$('exportPdf').disabled=!v.hasFigures;
     const grantsApply=v.config.buy==='hdb';
     $('resultCaption').textContent=!v.hasFigures?'Enter your figures to start planning.':v.buy?(v.topUp>0?'After eligible CPF, '+(grantsApply?'grants, ':'')+'allocated savings'+(v.sale?' and sale proceeds.':'.'):'Your allocated funds cover this estimate. Review the breakdown below.'):(v.primary<0?'Your sale figures show a shortfall to be funded.':'After your loan, CPF refund, fees and commission.');
     let metrics='';if(v.buy){metrics+=metric('Loan used',v.buy.loanUsed)+metric(grantsApply?'CPF + grants used':'CPF OA used',v.buy.cpfUsed+v.buy.grantUsed);if(v.sale)metrics+=metric('Sale proceeds',v.sale.proceeds);metrics+=metric('Purchase cash needed',v.buy.cashNeeded)+metric('Cash remaining',v.buffer);}else if(v.sale){metrics=metric('Selling price',v.sale.price)+metric('Total deductions',v.sale.price-v.sale.proceeds);}
@@ -102,16 +102,10 @@
     let allocation='';if(v.buy&&v.hasFigures){const total=Math.max(v.buy.requirement+v.buy.loanUsed,1);const loan=Math.min(v.buy.loanUsed/total*100,100),cpf=Math.min((v.buy.cpfUsed+v.buy.grantUsed)/total*100,100),cash=Math.max(100-loan-cpf,0);allocation=`<div class="funding-bar" aria-hidden="true"><span class="loan" style="width:${loan}%"></span><span class="cpf" style="width:${cpf}%"></span><span class="cash" style="width:${cash}%"></span></div>Loan · CPF${grantsApply?' &amp; grants':''} · Cash${v.buy.cov>0?`<br><strong>${money(v.buy.cov)} cash-over-valuation</strong> is included in your cash requirement.`:''}`;}
     $('allocation').innerHTML=allocation;
     $('breakdown').innerHTML=v.groups.map(g=>`<section class="breakdown-card"><h3>${g.title}</h3>${g.rows.map(r=>`<div class="breakdown-row ${r.kind} ${r.bold?'emphasis':''} ${r.red?'red':''}"><span>${esc(r.label)}</span><span class="row-amount">${money(r.value)}</span></div>`).join('')}</section>`).join('');
-    $('savedCount').textContent=cases.length;return v;
+    return v;
   }
   function render(){renderFields();renderSummary();}
   function switchScenario(scenario){rememberShared(current);drafts[current.scenario]=structuredClone(current);current=hydrateShared(drafts[scenario]?cleanRecord(drafts[scenario]):blank(scenario));render();persist();}
-  function saveEstimate(){if(!calculate(current.scenario,current.inputs).hasFigures){toast('Enter a purchase or selling price before saving.');return;}if(cases.length>=500){toast('Your collection is full. Download a backup and remove older estimates.');return;}
-    const record={...structuredClone(current),affordability:window.EstateAffordability?.getState(),others:window.EstateOthers?.getState(),id:crypto.randomUUID(),savedAt:new Date().toISOString()};if(!record.name)record.name=scenarios[current.scenario].label;cases.unshift(record);
-    if(!persist()){cases.shift();toast('Unable to save in this browser. Use Download backup to keep your draft.');return;}renderSummary();toast('Estimate saved on this device.');}
-  function renderSaved(){const list=$('savedList');list.replaceChildren();if(!cases.length){list.innerHTML='<div class="empty-state">Your next chapter starts here.<p class="small">Save an estimate to build your collection.</p></div>';return;}
-    for(const r of cases){const v=calculate(r.scenario,r.inputs);const item=document.createElement('article');item.className='saved-item';const details=document.createElement('div');const title=document.createElement('h3');title.textContent=r.name;const subtitle=document.createElement('p');subtitle.textContent=scenarios[r.scenario].label+' · '+new Date(r.savedAt).toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'});const amount=document.createElement('p');amount.textContent=v.primaryLabel+': '+money(v.primary);details.append(title,subtitle,amount);const actions=document.createElement('div');actions.className='saved-item-actions';const open=document.createElement('button');open.textContent='Open ↗';open.addEventListener('click',()=>{drafts[current.scenario]=structuredClone(current);current=cleanRecord(r);if(r.affordability)window.EstateAffordability?.setState(r.affordability);if(r.others)window.EstateOthers?.setState(r.others);rememberShared(current);render();persist();$('savedDialog').close();toast('Saved estimate opened. Save again to keep a new copy.');});const del=document.createElement('button');del.textContent='Remove';del.setAttribute('aria-label','Remove '+r.name);del.addEventListener('click',()=>{deleteId=r.id;$('deleteDialog').showModal();});actions.append(open,del);item.append(details,actions);list.append(item);}
-  }
   function download(bytes,type,name){const url=URL.createObjectURL(new Blob([bytes],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
   function filename(name){return PropertyPdf.filename(name);}
   function inputDetails(){const labels={salePrice:'Selling price',saleLoan:'Outstanding sale loan',saleCpf:'CPF refund with accrued interest',saleHip:'Outstanding HIP',saleLevy:'Resale levy',saleSsd:'Seller stamp duty',salePenalty:'Bank penalty',saleLegal:'Seller legal fee',saleMisc:'Seller miscellaneous fee',saleRate:'Seller commission rate (%)',saleOverride:'Seller edited commission including GST',buyPrice:'Purchase price',buyValuation:'Valuation / market value',buyLoan:'Approved purchase loan',buyPaydown:'Second HDB loan proceeds paydown',buyCpf:'CPF OA available',buyGrant:'CPF housing grants',buyLegal:'Buyer legal fee',buyMisc:'Buyer miscellaneous fee',buyRate:'Buyer commission rate (%)',buyOverride:'Buyer edited commission including GST',absdRate:'ABSD rate (%)',cashSavings:'Cash savings allocated',loanType:'Loan type',saleCommissionOn:'Include seller commission',buyCommissionOn:'Include buyer commission',saleCommissionGstChoice:'Seller commission with GST',saleCommissionPlainChoice:'Seller commission without GST',buyCommissionGstChoice:'Buyer commission with GST',buyCommissionPlainChoice:'Buyer commission without GST'};
@@ -148,14 +142,32 @@
   $('calculator').addEventListener('click',event=>{if(event.target.dataset.resetCommission){current.inputs[event.target.dataset.resetCommission+'Override']='';syncCommissionFields();rememberShared(current);renderSummary();persist();}if(event.target.id==='autoLoan'){current.inputs.buyLoanAuto=true;syncAutoLoan();rememberShared(current);renderSummary();persist();}});
   $('calculator').addEventListener('focusout',e=>{const key=e.target.dataset.key;if(!numericKeys.includes(key)||e.target.type==='number')return;e.target.value=has(current.inputs[key])?n(current.inputs[key]).toLocaleString('en-SG',{maximumFractionDigits:0}):'';syncCommissionFields();});
   $('estimateName').addEventListener('input',e=>{const old=current.name;current.name=e.target.value;window.EstateAffordability?.shareName(current.name,old);persist();});$('notes').addEventListener('input',e=>{current.notes=e.target.value;persist();});
-  $('saveEstimate').addEventListener('click',saveEstimate);$('exportPdf').addEventListener('click',exportPdf);
-  $('openSaved').addEventListener('click',()=>{renderSaved();$('savedDialog').showModal();});$('closeSaved').addEventListener('click',()=>$('savedDialog').close());
-  $('reset').addEventListener('click',()=>$('resetDialog').showModal());$('cancelReset').addEventListener('click',()=>$('resetDialog').close());$('confirmReset').addEventListener('click',()=>{current=blank(current.scenario);if(scenarios[current.scenario].buy)delete sharedSession.cash.cashSavings;assessmentSeeded.delete(current.scenario);rememberShared(current);render();persist();$('resetDialog').close();toast('A fresh estimate is ready.');});
-  $('cancelDelete').addEventListener('click',()=>$('deleteDialog').close());$('confirmDelete').addEventListener('click',()=>{const old=cases;cases=cases.filter(r=>r.id!==deleteId);if(!persist()){cases=old;toast('Unable to remove the estimate from browser storage.');}else toast('Saved estimate removed.');renderSaved();renderSummary();$('deleteDialog').close();});
+  $('exportPdf').addEventListener('click',exportPdf);
   $('toggleDetails').addEventListener('click',()=>{const hide=!$('breakdown').hidden;$('breakdown').hidden=hide;$('toggleDetails').setAttribute('aria-expanded',String(!hide));$('toggleDetails').textContent=hide?'Show breakdown +':'Hide breakdown −';});
-  $('backup').addEventListener('click',()=>{download(JSON.stringify({version:1,cases,drafts,current,affordability:window.EstateAffordability?.getState(),others:window.EstateOthers?.getState()},null,2),'application/json','estate-basics-backup-'+new Date().toISOString().slice(0,10)+'.json');toast('Backup downloaded.');});
-  $('importBackup').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>2000000)throw Error('File too large');const data=JSON.parse(await file.text());if(data.version!==1||!Array.isArray(data.cases))throw Error('Invalid backup');const incoming=data.cases.slice(0,500).map(r=>({...cleanRecord(r),id:String(r.id||crypto.randomUUID()),savedAt:isNaN(Date.parse(r.savedAt))?new Date().toISOString():r.savedAt}));const draft=data.current?cleanRecord(data.current):null;const previousCases=cases,previousCurrent=current;const ids=new Set(cases.map(r=>r.id));cases=[...incoming.filter(r=>!ids.has(r.id)),...cases].slice(0,500);if(draft){drafts[current.scenario]=structuredClone(current);current=draft;}if(!persist()){cases=previousCases;current=previousCurrent;throw Error('Storage unavailable');}if(data.affordability)window.EstateAffordability?.setState(data.affordability);if(data.others)window.EstateOthers?.setState(data.others);render();renderSaved();toast('Backup restored. Existing saved estimates were kept.');}catch{toast('Could not restore this backup. Choose a Estate Basics JSON backup and check browser storage.');}e.target.value='';});
+  function resetDrafts(){
+    drafts={};
+    sharedSession.buy={};
+    sharedSession.sell={};
+    sharedSession.cash={};
+    assessmentSeeded.clear();
+    current=blank('buy-hdb');
+  }
   window.EstatePlannerBridge={
+    getState:()=>structuredClone({current,drafts}),
+    setState(raw){
+      const next=cleanRecord(raw.current);
+      const restored={};
+      for(const name of Object.keys(scenarios)){
+        if(raw.drafts?.[name])restored[name]=cleanRecord(raw.drafts[name]);
+      }
+      resetDrafts();
+      drafts=restored;
+      current=next;
+      rememberShared(current);
+      render();
+      persist();
+    },
+    startFresh(){resetDrafts();$('breakdown').hidden=false;$('toggleDetails').setAttribute('aria-expanded','true');$('toggleDetails').textContent='Hide breakdown −';render();persist();},
     getClientPurchase(){
       const result=calculate(current.scenario,current.inputs);
       return result.buy?.price?{type:result.config.buy,buy:result.buy,inputs:{...current.inputs},name:current.name}:null;

@@ -12,7 +12,7 @@
   const money = new Intl.NumberFormat('en-SG', {style:'currency', currency:'SGD', maximumFractionDigits:0});
   const format = amount => money.format(amount);
   const period = year => year === 0 ? 'Now' : 'Year ' + year;
-  const propertyNames = {hdb:'HDB', ec:'Executive Condominium', private:'Private residential'};
+  const propertyNames = {hdb:'HDB', ec:'EC', private:'Private Property'};
   const amountKeys = Object.keys(defaults).filter(key => key !== 'propertyType');
   const parse = value => String(value ?? '').replace(/[$,\s]/g,'');
   const withinRange = (value,key) => value === '' || (/^\d+(?:\.\d+)?$/.test(value) &&
@@ -172,10 +172,12 @@
   const form = $('purchaseBudgetForm');
   let state = {...defaults};
   let linked = false;
+  let savedYear = 0;
   try {
-    const stored = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    const stored = JSON.parse(root.EstateDraft.getItem(storageKey) || '{}');
     state = clean(stored.budget ?? stored);
     linked = stored.linked === true;
+    savedYear = stored.year;
   } catch {}
 
   function sync() {
@@ -187,7 +189,7 @@
   }
 
   function persist() {
-    try { localStorage.setItem(storageKey, JSON.stringify({budget:state, linked})); } catch {}
+    try { root.EstateDraft.setItem(storageKey, JSON.stringify(root.EstatePurchaseBudget.getState())); } catch {}
   }
 
   function showBalance(node, balance) {
@@ -277,11 +279,12 @@
     $('purchaseBudgetStatus').textContent = 'Max Loan and monthly CPF OA copied for ' + propertyNames[state.propertyType] + '.';
   }
 
-  $('purchaseBudgetYear').addEventListener('change', render);
+  $('purchaseBudgetYear').addEventListener('change', () => {persist();render();});
   $('purchaseBudgetProjection').addEventListener('click', event => {
     const row = event.target.closest('tr[data-budget-year]');
     if (!row) return;
     $('purchaseBudgetYear').value = row.dataset.budgetYear;
+    persist();
     render();
     const heading = $('purchaseBudgetCostsTitle');
     heading.focus({preventScroll:true});
@@ -318,38 +321,24 @@
     const filename = root.PropertyPdf.filename('Purchase Budget').replace('Property Planner - ','Estate Basics - ');
     download(root.PropertyPdf.purchaseBudget(data), 'application/pdf', filename+'.pdf');
   });
-  $('purchaseBudgetSave').addEventListener('click', () => {
-    if (!form.reportValidity()) return;
-    const bytes = JSON.stringify({type:'estate-basics-purchase-budget', version:1, budget:state}, null, 2);
-    download(bytes, 'application/json', 'Estate Basics - Purchase Budget.json');
-    $('purchaseBudgetStatus').textContent = 'Purchase budget downloaded as a restore file.';
-  });
-  $('purchaseBudgetRestore').addEventListener('click', () => $('purchaseBudgetFile').click());
-  $('purchaseBudgetFile').addEventListener('change', async event => {
-    const input = event.target;
-    const file = input.files[0];
-    if (!file) return;
-    try {
-      if (file.size > 2000000) throw Error();
-      const saved = JSON.parse(await file.text());
-      if (saved.type !== 'estate-basics-purchase-budget' || saved.version !== 1 ||
-          !saved.budget || typeof saved.budget !== 'object' || Array.isArray(saved.budget)) throw Error();
-      state = clean(saved.budget);
-      linked = false;
-      sync();
-      persist();
-      render();
-      $('purchaseBudgetStatus').textContent = 'Purchase budget restored.';
-    } catch {
-      $('purchaseBudgetStatus').textContent = 'Choose a saved Purchase Budget JSON file.';
-    }
-    input.value = '';
-  });
-
   for (let year = 0; year <= 10; year++) {
     $('purchaseBudgetYear').add(new Option(period(year), year));
   }
   root.EstatePurchaseBudget = {
+    getState:() => ({budget:clean(state), linked, year:Number($('purchaseBudgetYear').value)}),
+    setState(saved) {
+      state = clean(saved.budget ?? saved);
+      linked = saved.linked === true;
+      $('purchaseBudgetYear').value = String(Math.min(10,Math.max(0,Math.floor(Number(saved.year)||0))));
+      $('purchaseBudgetStatus').textContent = '';
+      sync();
+      persist();
+      render();
+    },
+    getReportData() {
+      if (!form.checkValidity() || !['maxLoan','oaBalance','cashBalance','monthlyOa','monthlyCash','targetPrice'].some(key=>state[key]!=='')) return null;
+      return reportData(state, Number($('purchaseBudgetYear').value), linked ? root.EstateAffordability.getState() : null);
+    },
     startFresh() {
       state = {...defaults};
       linked = false;
@@ -360,6 +349,7 @@
       render();
     }
   };
+  $('purchaseBudgetYear').value = String(savedYear || 0);
   sync();
   render();
 })(globalThis);

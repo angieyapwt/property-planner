@@ -13,7 +13,7 @@
     const safe=String(name||'Untitled').replace(/[\\/:*?"<>|\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().slice(0,80)||'Untitled';
     return 'Property Planner - '+safe+' - '+part('day')+part('month')+part('year');
   }
-  function reportPdf(options){
+  function reportPdf(options, pageSink){
     const {name,date}=options,documents=options.documents?.length?options.documents:[options],combined=documents.length>1;
     const navy='0.075 0.15 0.28',blue='0.20 0.35 0.57',muted='0.40 0.48 0.60',red='0.73 0.18 0.25',pale='0.93 0.96 0.995',ink='0.12 0.20 0.32';
     const pages=[];let ops=[],y=0,pageNumber=0;
@@ -85,14 +85,19 @@
     ])){wrap(p,94).forEach(l=>line(l,8.3,false,muted));y-=3;}
     }
     pages.push(ops.join('\n'));
-    return encodePages(pages,595,842,navy,muted);
+    return finishPages(pages,595,842,navy,muted,pageSink);
   }
-  function encodePages(pages,width,height,navy,muted){
+  function finishPages(streams,width,height,navy,muted,pageSink,footer='ESTATE BASICS  /  PRIVATE PLANNING REPORT'){
+    const pages=streams.map(stream=>({stream,width,height,navy,muted,footer}));
+    if(pageSink){pageSink.push(...pages);return;}
+    return encodePages(pages);
+  }
+  function encodePages(pages){
     const objects=['<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding << /BaseEncoding /WinAnsiEncoding /Differences [128 /minus /approxequal] >> >>','<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>'];
     const kids=[];
-    pages.forEach((stream,i)=>{
+    pages.forEach(({stream,width,height,navy,muted,footer},i)=>{
       const pageId=objects.length+1,streamId=pageId+1;kids.push(pageId+' 0 R');
-      stream+='\n'+navy+' rg 39 42 '+(width-78)+' 0.6 re f\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 39 27 Tm (ESTATE BASICS  /  PRIVATE PLANNING REPORT) Tj ET\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 '+(width-86)+' 27 Tm ('+(i+1)+' / '+pages.length+') Tj ET';
+      stream+='\n'+navy+' rg 39 42 '+(width-78)+' 0.6 re f\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 39 27 Tm ('+escape(footer)+') Tj ET\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 '+(width-86)+' 27 Tm ('+(i+1)+' / '+pages.length+') Tj ET';
       objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+width+' '+height+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents '+streamId+' 0 R >>');
       objects.push('<< /Length '+stream.length+' >>\nstream\n'+stream+'\nendstream');
     });
@@ -101,7 +106,7 @@
     const xref=pdf.length;pdf+='xref\n0 '+(objects.length+1)+'\n0000000000 65535 f \n';for(const o of offsets.slice(1))pdf+=String(o).padStart(10,'0')+' 00000 n \n';pdf+='trailer\n<< /Size '+(objects.length+1)+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';
     return new TextEncoder().encode(pdf);
   }
-  function clientReport(data){
+  function clientReport(data,pageSink){
     const navy='0.075 0.15 0.28', blue='0.20 0.35 0.57', muted='0.36 0.44 0.55';
     const pale='0.93 0.96 0.995', white='1 1 1', red='0.72 0.18 0.24', green='0.12 0.42 0.29';
     const ops=[];
@@ -118,7 +123,7 @@
       text(value,x-width*size/10,y,size,bold?'F2':'F1',color);
     }
     box(0,496,842,99,navy);
-    text(data.preparedBy,39,568,9,'F2','0.75 0.85 1');
+    text('Estate Basics',39,568,11,'F2','0.75 0.85 1');
     text(data.title,39,533,data.title.length>30?22:25,'F3',white);
     text(data.property,40,511,10,'F2',white);
     text(data.date,682,568,9,'F1',white);
@@ -161,13 +166,13 @@
     for(const note of data.footnotes){
       for(const line of wrap(note,130)){text(line,40,y,8,'F1',muted);y-=10;}
     }
-    return encodePages([ops.join('\n')],842,595,navy,muted);
+    return finishPages([ops.join('\n')],842,595,navy,muted,pageSink,data.preparedBy);
   }
   function combinedReport({name,date,planner,assessment}){
     if(!planner||!assessment)throw new Error('Both calculations are required.');
     return reportPdf({name,date,documents:[{...planner,title:'Property Planner'},{...assessment,title:'Affordability Assessment'}]});
   }
-  function purchaseBudget(data, now = new Date()){
+  function purchaseBudget(data, now = new Date(), pageSink){
     const navy='0.075 0.15 0.28', muted='0.36 0.44 0.55', blue='0.20 0.35 0.57';
     const white='1 1 1', pale='0.93 0.96 0.995', stripe='0.975 0.982 0.995';
     const red='0.66 0.20 0.27', green='0.08 0.37 0.25';
@@ -231,8 +236,16 @@
     text('Cash requirement includes the minimum cash downpayment, agent fees and miscellaneous fees.',40,77,9,'F1',muted);
     text('Stamp duty may need to be paid in cash before CPF reimbursement. All amounts are in SGD.',40,60,9,'F1',muted);
     pages.push(ops.join('\n'));
-    return encodePages(pages,842,595,navy,muted);
+    return finishPages(pages,842,595,navy,muted,pageSink);
   }
-  const api={reportPdf,combinedReport,clientReport,purchaseBudget,wrap,filename:reportFilename};
+  function workspaceReport({planner, assessment, budget, others, client},now=new Date()){
+    const pages=[];
+    for(const data of [planner,assessment]) if(data) reportPdf(data,pages);
+    if(budget) purchaseBudget(budget,now,pages);
+    if(others) reportPdf(others,pages);
+    if(client) clientReport(client,pages);
+    return pages.length ? encodePages(pages) : null;
+  }
+  const api={reportPdf,combinedReport,clientReport,purchaseBudget,workspaceReport,wrap,filename:reportFilename};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.PropertyPdf=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
