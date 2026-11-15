@@ -63,7 +63,7 @@
       ];
       buy={price,valuation,basis,loan,maxLoan,loanUsed,paydown,cov,loanGap,bsd,absd,stampDutyTotal,fee,requirement,grantUsed,cpfUsed,cashOnly,cashNeeded,
         rows:[row('Purchase price',price),row('Valuation / market value',valuation),
-          row('Maximum loan at 75% of lower price / valuation',maxLoan,'guide'),...(loanType==='No loan'?[]:[row('75% loan of property price',price*.75,'guide')]),
+          ...(loanType==='No loan'?[]:[row('75% loan of property price',price*.75,'guide')]),row('Maximum loan at 75% of lower price / valuation',maxLoan,'guide'),
           row('Cash top-up from lower valuation',loanGap,'guide'),...(maxLoan>loan?[row('Loan Shortfall',maxLoan-loan,'guide')]:[]),
           ...(paydownApplicable?[row('Second HDB loan proceeds paydown',paydown),row('Net loan after paydown',-loanUsed,'guide')]:[]),
           row('Cash-over-valuation (cash only)',cov,'guide'),...downRows,

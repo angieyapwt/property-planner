@@ -87,17 +87,18 @@
     pages.push(ops.join('\n'));
     return finishPages(pages,595,842,navy,muted,pageSink);
   }
-  function finishPages(streams,width,height,navy,muted,pageSink,footer='ESTATE BASICS  /  PRIVATE PLANNING REPORT'){
-    const pages=streams.map(stream=>({stream,width,height,navy,muted,footer}));
+  function finishPages(streams,width,height,navy,muted,pageSink,footer='ESTATE BASICS  /  PRIVATE PLANNING REPORT',pageNumbers=true){
+    const pages=streams.map(stream=>({stream,width,height,navy,muted,footer,pageNumbers}));
     if(pageSink){pageSink.push(...pages);return;}
     return encodePages(pages);
   }
   function encodePages(pages){
     const objects=['<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding << /BaseEncoding /WinAnsiEncoding /Differences [128 /minus /approxequal] >> >>','<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman >>'];
     const kids=[];
-    pages.forEach(({stream,width,height,navy,muted,footer},i)=>{
+    pages.forEach(({stream,width,height,navy,muted,footer,pageNumbers},i)=>{
       const pageId=objects.length+1,streamId=pageId+1;kids.push(pageId+' 0 R');
-      stream+='\n'+navy+' rg 39 42 '+(width-78)+' 0.6 re f\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 39 27 Tm ('+escape(footer)+') Tj ET\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 '+(width-86)+' 27 Tm ('+(i+1)+' / '+pages.length+') Tj ET';
+      stream+='\n'+navy+' rg 39 42 '+(width-78)+' 0.6 re f\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 39 27 Tm ('+escape(footer)+') Tj ET';
+      if(pageNumbers)stream+='\nBT /F1 7 Tf '+muted+' rg 1 0 0 1 '+(width-86)+' 27 Tm ('+(i+1)+' / '+pages.length+') Tj ET';
       objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+width+' '+height+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents '+streamId+' 0 R >>');
       objects.push('<< /Length '+stream.length+' >>\nstream\n'+stream+'\nendstream');
     });
@@ -117,10 +118,9 @@
         : escape(value);
       ops.push('BT /'+font+' '+size+' Tf '+color+' rg 1 0 0 1 '+x+' '+y+' Tm ('+encoded+') Tj ET');
     }
-    function right(value,x,y,bold,color){
-      const width=[...ascii(value)].reduce((sum,ch)=>sum+(/[0-9$]/.test(ch)?5.56:ch===','||ch==='.'?2.78:5.56),0);
-      const size=value.length>27?8.5:10;
-      text(value,x-width*size/10,y,size,bold?'F2':'F1',color);
+    function right(value,x,y,color){
+      const width=[...ascii(value)].reduce((sum,ch)=>sum+(/[,. ]/.test(ch)?2.5:5),0);
+      text(value,x-width,y,9,'F1',color);
     }
     box(0,496,842,99,navy);
     text('Estate Basics',39,568,11,'F2','0.75 0.85 1');
@@ -136,13 +136,13 @@
       text(value,x+12,423,16,'F3');
     });
     box(39,377,470,24,pale);
-    text('Purchase & funding',50,385,10,'F2',blue);
+    text('Purchase & funding',50,385,10,'F1',blue);
     const rowSpacing=Math.min(15,195/Math.max(data.purchase.length-1,1));
-    data.purchase.forEach(({label,value,bold,alert},i)=>{
+    data.purchase.forEach(({label,value,alert},i)=>{
       const y=361-i*rowSpacing;
       if(i%2===0)box(39,y-3,470,rowSpacing-1,'0.976 0.983 0.996');
-      text(label,50,y,9,bold?'F2':'F1',alert?red:navy);
-      right(value,498,y,bold,alert?red:navy);
+      text(label,50,y,9,'F1',alert?red:navy);
+      right(value,498,y,alert?red:navy);
     });
     box(525,377,278,24,pale);
     text('Monthly mortgage',536,385,10,'F2',blue);
@@ -164,9 +164,11 @@
     });
     let y=96;
     for(const note of data.footnotes){
-      for(const line of wrap(note,130)){text(line,40,y,8,'F1',muted);y-=10;}
+      const size=Math.min(8,760/(ascii(note).length*.75));
+      text(note,40,y,size,'F1',muted);
+      y-=12;
     }
-    return finishPages([ops.join('\n')],842,595,navy,muted,pageSink,data.preparedBy);
+    return finishPages([ops.join('\n')],842,595,navy,muted,pageSink,data.preparedBy,false);
   }
   function combinedReport({name,date,planner,assessment}){
     if(!planner||!assessment)throw new Error('Both calculations are required.');

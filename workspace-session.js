@@ -11,14 +11,14 @@
 
   document.addEventListener('input',event => {
     const input = event.target;
-    if (!input.matches?.('input[data-live-price],input[data-currency]')) return;
+    if (!input.matches?.('input[data-currency]')) return;
     const original = input.value;
     const raw = original.replace(/[$,\s]/g,'');
     if (!/^\d*(?:\.\d*)?$/.test(raw)) return;
     const before = original.slice(0,input.selectionStart).replace(/[^\d.]/g,'').length;
     const [integer, fraction] = raw.split('.');
     const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g,',') + (fraction === undefined ? '' : '.' + fraction);
-    const value = grouped && input.hasAttribute('data-currency') ? '$'+grouped : grouped;
+    const value = grouped ? '$'+grouped : '';
     if (value === original) return;
     input.value = value;
     let position = 0, digits = 0;

@@ -9,7 +9,7 @@
   const controls={builtYear:'ltvBuiltYear',leaseTerm:'ltvLeaseTerm',currentYear:'ltvCurrentYear',dob:'ltvDob',age:'ltvAge',ltv:'ltvLimit',price:'ltvPrice'};
   $('leaseForm').addEventListener('submit',e=>e.preventDefault());
   function persist(){try{window.EstateDraft.setItem(KEY,JSON.stringify(state));$('othersSaveStatus').textContent='Values stay in this window.';}catch{$('othersSaveStatus').textContent='Browser storage is unavailable. Download a backup to keep these figures.';}}
-  function sync(){for(const [key,id]of Object.entries(controls))$(id).value=key==='price'&&dates.has(state.price)?number(dates.n(state.price)):key==='dob'?DobInput.format(state.dob):state[key];}
+  function sync(){for(const [key,id]of Object.entries(controls))$(id).value=key==='price'&&dates.has(state.price)?money(dates.n(state.price)):key==='dob'?DobInput.format(state.dob):state[key];}
   function render(){
     const r=M.calculate(state);$('exportOthersPdf').disabled=!r.valid||r.loan===null;$('ltvRemaining').textContent=r.remaining===null?'—':number(r.remaining)+' years';
     if(state.ageAuto&&state.dob)$('ltvAge').value=r.age===null?'':r.age;
@@ -27,8 +27,8 @@
   for(const [key,id]of Object.entries(controls))$(id).addEventListener('input',()=>{state[key]=key==='dob'?DobInput.parse($(id).value):$(id).value;if(key==='currentYear')state.currentYearAuto=false;if(key==='dob')state.ageAuto=true;if(key==='age')state.ageAuto=!dates.has(state.age);render();persist();});
   $('ltvUseDob').addEventListener('click',()=>{state.ageAuto=true;render();persist();});
   $('ltvUseYear').addEventListener('click',()=>{state.currentYearAuto=true;state.currentYear=dates.today().slice(0,4);$('ltvCurrentYear').value=state.currentYear;render();persist();});
-  $('ltvPrice').addEventListener('focusout',()=>{$('ltvPrice').value=dates.has(state.price)?number(dates.n(state.price)):'';});
-  function importPrice(){const input=window.EstatePlannerBridge?.getInputs('hdb')||{};if(dates.has(input.buyPrice)){state.price=input.buyPrice;$('ltvPrice').value=number(dates.n(state.price));render();persist();}}
+  $('ltvPrice').addEventListener('focusout',()=>{$('ltvPrice').value=dates.has(state.price)?money(dates.n(state.price)):'';});
+  function importPrice(){const input=window.EstatePlannerBridge?.getInputs('hdb')||{};if(dates.has(input.buyPrice)){state.price=input.buyPrice;$('ltvPrice').value=money(dates.n(state.price));render();persist();}}
   $('ltvUsePrice').addEventListener('click',importPrice);
   document.addEventListener('estate:tab-changed',e=>{if(e.detail==='others'&&!seeded){seeded=true;if(!state.skipPlannerPrefill&&!dates.has(state.price))importPrice();render();}});
   window.EstateOthers={startFresh(){state=M.defaults();state.skipPlannerPrefill=true;seeded=true;sync();render();persist();},getState:()=>M.cleanState(state),setState(raw){state=M.cleanState(raw);sync();render();persist();}};

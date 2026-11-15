@@ -15,6 +15,7 @@
   const privateAgentNote = 'If co-broking is allowed by the seller’s agent, no commission is payable by you. Otherwise, it is 1% + 9% GST.';
   const amounts = ['price','valuation','loan','oa','cash','grant','legal','misc','agent','splitCash','splitCpf'];
   const rateLabels = ['Indicative Current Interest Rate','Stress Test Interest Rate'];
+  const hdbRate = '2.6';
   function clean(raw = {}){
     const state = {...defaults};
     state.type = ['hdb','ec'].includes(raw.type) ? raw.type : 'condo';
@@ -34,12 +35,20 @@
 
   function build(raw, now = new Date()){
     const d = clean(raw);
+    const automatic = {
+      valuation:d.price,
+      legal:d.type === 'hdb' ? 2500 : 3000,
+      misc:1000,
+      agent:property.commission(Number(d.price),1,true,'')
+    };
+    const resolved = Object.fromEntries(Object.entries(automatic).map(([key,value]) =>
+      [key,d[key] === '' ? value : d[key]]));
     const plain = key => d[key] === '' ? '' : Number(d[key]).toFixed(4);
     const {buy} = property.calculate(d.type === 'hdb' ? 'buy-hdb' : 'buy-condo', {
       loanType:d.financing, buyPrice:plain('price'), buyValuation:plain('valuation'),
       buyLoan:plain('loan'), buyCpf:plain('oa'), buyGrant:plain('grant'),
-      buyLegal:plain('legal'), buyMisc:plain('misc'), buyOverride:plain('agent'),
-      buyCommissionOn:d.agent !== '', absdRate:plain('absd')
+      buyLegal:resolved.legal, buyMisc:resolved.misc, buyOverride:resolved.agent,
+      buyCommissionOn:true, absdRate:plain('absd')
     });
     const bankLoan = d.financing === 'Bank loan';
     const hasLoan = d.financing !== 'No loan';
@@ -49,7 +58,7 @@
     const share = bankLoan ? .20 : .25;
     const eligibleDownpayment = buy.basis*share;
     const grantForDownpayment = Math.min(buy.grantUsed,eligibleDownpayment);
-    const defaultCpf = Math.min(buy.cpfUsed,eligibleDownpayment-grantForDownpayment);
+    const defaultCpf = Math.min(Number(d.oa),eligibleDownpayment-grantForDownpayment);
     const splitTotal = Math.round(buy.price*share-grantForDownpayment);
     const splitEdited = hasLoan && (d.splitCash !== '' || d.splitCpf !== '');
     const splitCpf = d.splitCpf !== '' ? Number(d.splitCpf)
@@ -73,13 +82,13 @@
       return {label:fund+(difference<0?' top-up needed':' remaining'),value:money(Math.abs(difference)),tone:difference<0?'shortfall':'remaining'};
     };
     const months = Math.round(Number(d.years)*12);
-    const rates = bankLoan ? [d.rateOne,d.rateTwo] : [d.rateOne];
+    const rates = bankLoan ? [d.rateOne,d.rateTwo] : [d.financing === 'HDB loan' ? hdbRate : d.rateOne];
     const row = (label,value,bold=false,alert=false) => ({label,value:money(value),bold,alert});
     const title = bankLoan ? 'Financial - Bank Loan' : hasLoan ? 'Financial - HDB Loan' : 'Financial - No Loan';
     const date = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Singapore',day:'2-digit',month:'short',year:'numeric'}).format(now);
     const valid = buy.price > 0 && !splitError && (!buy.loanUsed || (months >= 1 && rates.some(rate => rate !== '')));
     return {
-      valid, split:{visible:hasLoan,label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',cash:splitCash,cpf:splitCpf,error:splitError},
+      valid, resolved, split:{visible:hasLoan,label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',cash:splitCash,cpf:splitCpf,error:splitError},
       client:d.client.trim(), address:d.address.trim(), title, date,
       preparedBy:'PREPARED BY ANGIE YAP AND AMETHYST TEO',
       property:d.type === 'hdb' ? 'HDB resale purchase' : d.type === 'ec' ? 'EC purchase' : 'Private property purchase',
@@ -98,11 +107,11 @@
         ] : []),
         ...(hasLoan ? [{label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',value:downpaymentSplit,bold:true}] : []),
         ...(bankLoan ? [row('5% Cash',buy.price*.05,true)] : []),
-        ...(hasLoan && lowValuation && buy.maxLoan>buy.loanUsed ? [row('Additional loan shortfall',buy.maxLoan-buy.loanUsed,false,true)] : []),
+        ...(hasLoan && buy.maxLoan>buy.loan ? [row('Loan Shortfall',buy.maxLoan-buy.loan,false,true)] : []),
         ...(buy.cov > 0 ? [row('Cash over valuation',buy.cov)] : []),
         {label:'Stamp duty (BSD + ABSD)',value:money(buy.bsd)+' + '+money(buy.absd)+' = '+money(buy.stampDutyTotal),bold:true},
-        row('Legal fees',Number(d.legal)),
-        row('Miscellaneous fees',Number(d.misc)),
+        row('Legal fees',Number(resolved.legal)),
+        row('Miscellaneous fees',Number(resolved.misc)),
         row(d.agentNote?'Agent service fee *':'Agent service fee',buy.fee),
         ...(buy.grantUsed > 0 ? [row('CPF housing grants applied',buy.grantUsed)] : [])
       ],
@@ -138,9 +147,9 @@
       const optional = key => property.has(inputs[key]) ? property.n(inputs[key]) : '';
       Object.assign(fields,{
         type, client:name, financing:inputs.loanType, price:buy.price, valuation:optional('buyValuation'),
-        loan:buy.loanUsed, oa:optional('buyCpf'), cash:optional('cashSavings'),
-        grant:type==='hdb' ? optional('buyGrant') : '', absd:property.n(inputs.absdRate),
-        legal:optional('buyLegal'), misc:optional('buyMisc'), agent:buy.fee
+        loan:inputs.buyLoanAuto && !buy.paydown ? '' : buy.loanUsed,
+        oa:optional('buyCpf'), cash:optional('cashSavings'),
+        grant:type==='hdb' ? optional('buyGrant') : '', absd:property.n(inputs.absdRate)
       });
     }
     if (mortgage) {
@@ -168,7 +177,7 @@
     for (const name of saved.edited ?? []) if (Object.hasOwn(defaults,name)) edited.add(name);
   } catch {}
   let state = {...draft};
-  const amountField = (field,label) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" type="text" inputmode="numeric" autocomplete="off"></label>`;
+  const amountField = (field,label) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" type="text" data-currency inputmode="numeric" autocomplete="off"></label>`;
   const numeric = (field,label,max) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" type="number" min="${field==='valuation'?1:0}" max="${max}" step="any" inputmode="decimal"></label>`;
   const text = (field,label,max) => `<label class="field"><span class="field-label">${label}</span><input name="${field}" maxlength="${max}"></label>`;
   const form = $('clientReportForm');
@@ -219,6 +228,13 @@
     }
     const data = build(state);
     syncSplit(data.split);
+    for (const [name,value] of Object.entries(data.resolved)) {
+      const input = field(name);
+      if (document.activeElement !== input && input.validity.valid) input.value = value === '' ? '' : money(Number(value));
+    }
+    const hdbLoan = state.financing === 'HDB loan';
+    field('rateOne').readOnly = hdbLoan;
+    if (hdbLoan || document.activeElement !== field('rateOne')) field('rateOne').value = hdbLoan ? hdbRate : state.rateOne;
     const invalidField = !form.checkValidity();
     const showGrant = state.type === 'hdb';
     field('grant').disabled = !showGrant;
@@ -257,6 +273,11 @@
       if (!input.validity.valid) { render(); return; }
       state[input.name] = input.value;
     }
+    if (input.name === 'splitCash' || input.name === 'splitCpf') {
+      const other = input.name === 'splitCash' ? 'splitCpf' : 'splitCash';
+      draft[other] = state[other] = '';
+      field(other).setCustomValidity('');
+    }
     draft[input.name] = state[input.name];
     edited.add(input.name);
     if (state.type !== 'hdb' && state.financing === 'HDB loan') {
@@ -270,8 +291,8 @@
   form.addEventListener('focusout',event=>{
     const input = event.target;
     if (amounts.includes(input.name) && input.validity.valid) {
-      const split = input.name.startsWith('split') ? build(state).split : null;
-      const value = split ? (input.name === 'splitCash' ? split.cash : split.cpf) : state[input.name];
+      const data = build(state);
+      const value = input.name === 'splitCash' ? data.split.cash : input.name === 'splitCpf' ? data.split.cpf : data.resolved[input.name] ?? state[input.name];
       input.value = value === '' || Number(value)<0 ? '' : money(Number(value));
     }
   });
@@ -283,7 +304,7 @@
     if (!fields.client) delete fields.client;
     const available = Object.keys(fields);
     if (restore) {
-      for (const name of [...available.filter(name=>name!=='client'),'splitCash','splitCpf']) {
+      for (const name of new Set([...available.filter(name=>name!=='client'),'valuation','legal','misc','agent','splitCash','splitCpf'])) {
         edited.delete(name);
         draft[name] = defaults[name];
       }

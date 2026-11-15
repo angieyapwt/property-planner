@@ -4,7 +4,6 @@
   const M=AffordabilityModel,$=id=>document.getElementById(id),KEY='estate-basics-affordability-v1';
   const currency=new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD',maximumFractionDigits:0,minimumFractionDigits:0});
   const money=v=>currency.format(Math.abs(v)<.005?0:v);
-  const whole=v=>M.n(v).toLocaleString('en-SG',{maximumFractionDigits:0});
   const number=v=>M.n(v).toLocaleString('en-SG',{maximumFractionDigits:2});
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const tenure=months=>months?Math.floor(months/12)+'y'+(months%12?' '+months%12+'m':''):'Unavailable';
@@ -17,7 +16,7 @@
   let state=M.defaults(),active='planner',lastResult;
   try{const saved=window.EstateDraft.getItem(KEY);if(saved)state=M.cleanState(JSON.parse(saved));}catch{}
   state=M.simplifyState(state);state.settings.term='standard';state.settings.maxMaturity='65';
-  const field=(i,key,label,hint='',type='text')=>`<label class="field"><span class="field-label">${label}</span>${type==='money'?`<div class="money-wrap"><span aria-hidden="true">$</span><input data-live-price inputmode="decimal" maxlength="18" data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${M.has(state.applicants[i][key])?whole(state.applicants[i][key]):''}"></div>`:`<input type="${type==='dob'?'text':type}" ${type==='number'?'min="0" max="100" step="1"':''} ${type==='dob'?'data-dob-input inputmode="numeric" maxlength="11" placeholder="DDMMYYYY" autocomplete="bday"':''} data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${esc(type==='dob'?DobInput.format(state.applicants[i][key]):state.applicants[i][key])}" ${key==='name'?'maxlength="60"':''}>`}${hint?`<span class="hint">${hint}</span>`:''}</label>`;
+  const field=(i,key,label,hint='',type='text')=>`<label class="field"><span class="field-label">${label}</span>${type==='money'?`<input data-currency inputmode="decimal" maxlength="18" data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${M.has(state.applicants[i][key])?money(M.n(state.applicants[i][key])):''}">`:`<input type="${type==='dob'?'text':type}" ${type==='number'?'min="0" max="100" step="1"':''} ${type==='dob'?'data-dob-input inputmode="numeric" maxlength="11" placeholder="DDMMYYYY" autocomplete="bday"':''} data-app="${i}" data-field="${key}" id="app-${i}-${key}" value="${esc(type==='dob'?DobInput.format(state.applicants[i][key]):state.applicants[i][key])}" ${key==='name'?'maxlength="60"':''}>`}${hint?`<span class="hint">${hint}</span>`:''}</label>`;
   function persist(){try{window.EstateDraft.setItem(KEY,JSON.stringify(state));$('affSaveStatus').textContent='Assessment stays in this window.';}catch{$('affSaveStatus').textContent='Browser storage is unavailable. Use Save all to device to keep a copy.';}}
   function renderApplicants(){
     $('applicants').innerHTML=state.applicants.map((a,i)=>`<section class="form-section applicant-card"><div class="applicant-title"><div><span class="eyebrow">APPLICANT ${i+1}</span><h3>${esc(a.name||'Applicant '+(i+1))}</h3></div>${state.applicants.length>1?`<button type="button" class="text-button remove-applicant" data-remove="${i}">Remove applicant</button>`:''}</div><div class="form-grid">
@@ -40,7 +39,7 @@
   function syncApplicants(){state.applicants.forEach((a,i)=>{
     const data=M.applicantValues(a,state.settings.asOf);
     if(a.ageAuto!==false)$('app-'+i+'-age').value=data.age===null?'':data.age;
-    if(a.oaAuto!==false)$('app-'+i+'-oa').value=whole(data.cpf);
+    if(a.oaAuto!==false)$('app-'+i+'-oa').value=money(data.cpf);
     $('app-'+i+'-gross').textContent=money(data.recognized,2);
   });}
   const settingIds={stressRate:'affStress',standardYears:'affStandardYears',actualRate:'affActual',comparisonLoan:'comparisonLoan',comparisonYears:'comparisonYears',comparisonRateTwo:'comparisonRateTwo'};
@@ -62,7 +61,7 @@
     const {loan,months,rates}=loanComparisonInputs();
 
     if(document.activeElement!==$('comparisonLoan')){
-      $('comparisonLoan').value=settings.comparisonLoan ? whole(settings.comparisonLoan) : loan>0 ? whole(loan) : '';
+      $('comparisonLoan').value=settings.comparisonLoan ? money(M.n(settings.comparisonLoan)) : loan>0 ? money(loan) : '';
     }
     if(document.activeElement!==$('comparisonYears')){
       $('comparisonYears').value=settings.comparisonYears||(months>0?number(months/12):'');
@@ -169,7 +168,7 @@
   $('affForm').addEventListener('change',e=>{if(e.target.tagName==='SELECT')e.target.dispatchEvent(new Event('input',{bubbles:true}));});
   $('affForm').addEventListener('click',e=>{if(e.target.dataset.resetAge!==undefined){const a=state.applicants[+e.target.dataset.resetAge];a.ageAuto=true;renderResults();persist();}if(e.target.dataset.resetOa!==undefined){const a=state.applicants[+e.target.dataset.resetOa];a.oaAuto=true;renderResults();persist();}if(e.target.dataset.remove!==undefined){state.applicants.splice(+e.target.dataset.remove,1);renderApplicants();renderResults();persist();}});
   $('addApplicant').addEventListener('click',()=>{if(state.applicants.length<2){state.applicants.push(M.applicant());state.settings.selection='pair';renderApplicants();renderResults();persist();}});
-  $('affForm').addEventListener('focusout',e=>{if(e.target.inputMode==='decimal'&&e.target.dataset.field){const a=state.applicants[+e.target.dataset.app],key=e.target.dataset.field;if(key==='oa'&&a.oaAuto!==false)return;e.target.value=M.has(a[key])?whole(a[key]):'';}});
+  $('affForm').addEventListener('focusout',e=>{if(e.target.inputMode==='decimal'&&e.target.dataset.field){const a=state.applicants[+e.target.dataset.app],key=e.target.dataset.field;if(key==='oa'&&a.oaAuto!==false)return;e.target.value=M.has(a[key])?money(M.n(a[key])):'';}});
   function chooseProperty(type,navigate=false){state.settings.property=type;state.settings.term='standard';renderResults();persist();if(navigate){$('affDetail').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});$('affDetailTitle').focus({preventScroll:true});}}
   function readQuotedRate(input){
     if(input.value==='')return '';
