@@ -78,7 +78,7 @@
 
   function projectedOa(assessment,month,growth) {
     const asOf=projectionDate(assessment.settings.asOf,month);
-    const applicants=projectedApplicants(assessment,Math.floor(month/12),growth);
+    const applicants=projectedApplicants(assessment,month/12,growth);
     return affordability.selectedIndices(assessment).reduce((total,index)=>
       total+affordability.cpfOa(applicants[index],asOf).amount,0);
   }

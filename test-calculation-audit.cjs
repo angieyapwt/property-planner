@@ -89,6 +89,26 @@ for (const [proceeds,paydown] of [[0,0],[25000,0],[40000,15000],[50000,25000],[1
   near(property.calculate('hdb-to-hdb',inputs).buy.paydown,paydown);
   near(property.calculate('hdb-to-hdb',{...inputs,secondHdbLoan:false}).buy.paydown,0);
 }
+const pendingSale=property.calculate('hdb-to-hdb',{buyPrice:600000,loanType:'HDB loan',
+  salePrice:'',saleLegal:2500,saleMisc:1000,buyLegal:2500,buyMisc:1000});
+near(pendingSale.sale.proceeds,0);
+const pendingPurchase=property.calculate('hdb-to-hdb',{salePrice:600000,buyPrice:'',
+  buyLegal:2500,buyMisc:1000,buyOverride:10000});
+near(pendingPurchase.buy.cashNeeded,0);
+near(pendingPurchase.buffer,600000);
+for(const scenario of Object.keys(property.scenarios)) {
+  for(const loanType of ['HDB loan','Bank loan','No loan']) {
+    const result=property.calculate(scenario,{buyPrice:600000,buyValuation:550000,buyLoan:300000,
+      buyCpf:100000,buyGrant:40000,buyLegal:2500,buyMisc:1000,buyRate:1,
+      salePrice:700000,saleLoan:250000,saleCpf:200000,saleAtMarketValue:true,
+      saleLegal:2500,saleMisc:1000,saleRate:2,loanType,cashSavings:10000});
+    if(result.buy) {
+      near(result.buy.requirement,result.buy.cashNeeded+result.buy.cpfUsed+result.buy.grantUsed);
+      near(result.topUp-result.buffer,result.buy.cashNeeded-(result.sale?.proceeds||0)-10000);
+    }
+    check(Number.isFinite(result.primary));
+  }
+}
 
 // Selected applicants, variable income haircut, stressed debt servicing and term boundaries.
 const assessment=finance.defaults();

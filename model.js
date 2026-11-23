@@ -42,7 +42,8 @@
         cpf=d.saleAtMarketValue===true?Math.min(cpfRequired,Math.max(price-loan,0)):cpfRequired,
         hip=config.sell==='hdb'?n(d.saleHip):0, levy=config.sell==='hdb'?n(d.saleLevy):0,
         ssd=n(d.saleSsd), penalty=n(d.salePenalty),
-        legal=n(d.saleLegal), misc=n(d.saleMisc), fee=commission(price,d.saleRate,d.saleCommissionOn,d.saleOverride,d.saleCommissionGst!==false);
+        legal=has(d.salePrice)?n(d.saleLegal):0, misc=has(d.salePrice)?n(d.saleMisc):0,
+        fee=has(d.salePrice)?commission(price,d.saleRate,d.saleCommissionOn,d.saleOverride,d.saleCommissionGst!==false):0;
       const proceeds=price-loan-cpf-hip-levy-ssd-penalty-legal-misc-fee;
       sale={price,loan,cpf,cpfRequired,cpfShortfall:cpfRequired-cpf,proceeds,rows:[row('Selling price',price),row('Outstanding loan',-loan),row('CPF refund with accrued interest',-cpf),
         ...(cpfRequired>cpf?[row('CPF refund shortfall waived for market-value sale',cpfRequired-cpf,'guide')]:[]),
@@ -56,7 +57,8 @@
       const {ltv,cashRate}=loanRules(isHdb,loanType,d.buyLtv);
       const maxLoan=basis*ltv;
       const requestedLoan=d.buyLoanAuto===true || !has(d.buyLoan) ? price*ltv : n(d.buyLoan);
-      const bsd=stampDuty(stampBasis),absd=additionalDuty(stampBasis,d.absdRate),legal=n(d.buyLegal),misc=n(d.buyMisc);
+      const bsd=price>0?stampDuty(stampBasis):0,absd=price>0?additionalDuty(stampBasis,d.absdRate):0,
+        legal=price>0?n(d.buyLegal):0,misc=price>0?n(d.buyMisc):0;
       const cashDown=basis*cashRate,grantAvailable=isHdb?Math.min(n(d.buyGrant),basis*.95):0;
       const cpfForPurchase=loanType==='HDB loan'?Math.max(n(d.buyCpf)-bsd-absd-legal,0):0;
       const ownContribution=loanType==='HDB loan'&&basis>0&&grantAvailable>=basis*.95?basis*.05:0;
@@ -68,7 +70,7 @@
       const automaticPaydown=Math.max(0,Math.min(positiveProceeds*.5,positiveProceeds-25000));
       const paydown=paydownApplicable?Math.min(has(d.buyPaydown)?n(d.buyPaydown):automaticPaydown,loan):0;
       const loanUsed=loan-paydown, cov=Math.max(price-valuation,0);
-      const fee=commission(price,d.buyRate,d.buyCommissionOn,d.buyOverride,d.buyCommissionGst!==false);
+      const fee=price>0?commission(price,d.buyRate,d.buyCommissionOn,d.buyOverride,d.buyCommissionGst!==false):0;
       const stampDutyTotal=bsd+absd;
       const requirement=price-loanUsed+stampDutyTotal+legal+misc+fee;
       const cashOnly=cov+cashDown+misc+fee+paydown;
