@@ -24,9 +24,10 @@
     for (const key of amountKeys) {
       const value = parse(raw[key]);
       if (value && withinRange(value,key)) {
-        state[key] = String(key === 'salaryIncrease' ? cents(Number(value)) : Math.round(Number(value)));
+        state[key] = String(['salaryIncrease','absdRate'].includes(key) ? cents(Number(value)) : Math.round(Number(value)));
       }
     }
+    state.monthlyOaAuto=raw.monthlyOaAuto!==false;
     return state;
   }
 
@@ -34,9 +35,8 @@
     const downpayment = cents(price * .25);
     const loan = cents(Math.min(price * .75, Number(state.maxLoan)));
     const extraEquity = cents(Math.max(0, price - loan - downpayment));
-    const bsd = price > 0 ? Math.max(1, property.stampDuty(price)) : 0;
-    const absd = state.absdRate > 0 && price > 0
-      ? Math.max(1, Math.floor(price * Number(state.absdRate) / 100 + 1e-8)) : 0;
+    const bsd = property.stampDuty(price);
+    const absd = property.additionalDuty(price,state.absdRate);
     const agent = cents(property.commission(price, 1, true, undefined));
     const legal = price > 0 ? (state.propertyType === 'hdb' ? 2500 : 3000) : 0;
     const misc = price > 0 ? 1000 : 0;
@@ -61,16 +61,33 @@
     return low;
   }
 
+  function projectionDate(asOf,months) {
+    const [year,month,day]=affordability.dateParts(asOf);
+    const date=new Date(Date.UTC(year,month-1+months,1));
+    const lastDay=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate();
+    return date.toISOString().slice(0,8)+String(Math.min(day,lastDay)).padStart(2,'0');
+  }
+
+  function projectedApplicants(assessment,years,growth) {
+    return assessment.applicants.map(applicant=>{
+      const {age}=affordability.applicantValues(applicant,assessment.settings.asOf);
+      return {...applicant,age:age===null?'':age+years,
+        income:(affordability.n(applicant.income)*growth).toFixed(2)};
+    });
+  }
+
+  function projectedOa(assessment,month,growth) {
+    const asOf=projectionDate(assessment.settings.asOf,month);
+    const applicants=projectedApplicants(assessment,Math.floor(month/12),growth);
+    return affordability.selectedIndices(assessment).reduce((total,index)=>
+      total+affordability.cpfOa(applicants[index],asOf).amount,0);
+  }
+
   function projectedLoan(assessment, propertyType, year, growth) {
     const type = propertyType === 'private' ? 'condo' : propertyType;
-    const applicants = assessment.applicants.map(applicant => {
-      const {age} = affordability.applicantValues(applicant, assessment.settings.asOf);
-      return {
-        ...applicant, ageAuto:false, age:age === null ? '' : age + year,
-        income:(affordability.n(applicant.income) * growth).toFixed(2)
-      };
-    });
-    const result = affordability.assess({...assessment, applicants, settings:{...assessment.settings, property:type}});
+    const applicants=projectedApplicants(assessment,year,growth);
+    const result = affordability.assess({...assessment, applicants, settings:{...assessment.settings, property:type,
+      asOfAuto:false,asOf:projectionDate(assessment.settings.asOf,year*12)}});
     const option = result.outcomes[type].standard;
     return option.valid ? option.maxLoan : 0;
   }
@@ -87,10 +104,14 @@
     const rows = Array.from({length: 11}, (_, year) => {
       // The first raise is after 12 months, so Year 1 uses today's monthly savings.
       const growth = annualGrowth ** Math.max(0, year - 1);
-      const monthlyOa = cents(Number(state.monthlyOa) * growth);
+      const automaticOa=assessment&&state.monthlyOaAuto;
+      const annualOa=year>0&&automaticOa
+        ? Array.from({length:12},(_,month)=>projectedOa(assessment,(year-1)*12+month,growth)).reduce((total,amount)=>total+amount,0)
+        : Number(state.monthlyOa)*growth*12;
+      const monthlyOa = cents(automaticOa&&year===0?projectedOa(assessment,0,1):annualOa/12);
       const monthlyCash = cents(Number(state.monthlyCash) * growth);
       if (year > 0) {
-        oa = cents(oa + monthlyOa * 12);
+        oa = cents(oa + annualOa);
         cash = cents(cash + monthlyCash * 12);
       }
       const maxLoan = assessment
@@ -141,7 +162,7 @@
         : 'After downpayment and purchase costs',
       salaryIncrease: Number(state.salaryIncrease) + '%',
       loanProjectionNote: assessment
-        ? 'Each year-end Max Loan uses projected salary and age, with other lending inputs held fixed.'
+        ? 'Each year-end Max Loan uses projected salary and age. Linked automatic OA applies age bands, the $8,000 wage ceiling and announced 2026/2027 rates, holding 2027 rates thereafter. OA excludes bonus contributions, interest and any retirement-account transfer of existing savings.'
         : 'Max Loan is held fixed. Link an Affordability Assessment to project future loan limits.',
       propertyType:propertyNames[state.propertyType], targetToday:target ? signedBalance(rows[0].targetBalance) : null,
       yearLabel:period(year.year), affordablePrice:format(year.price),
@@ -183,6 +204,7 @@
   function sync() {
     for (const [key, value] of Object.entries(state)) {
       const input = form.elements.namedItem(key);
+      if(!input)continue;
       input.setCustomValidity('');
       input.value = input.dataset.currency !== undefined && value !== '' ? format(Number(value)) : value;
     }
@@ -227,6 +249,7 @@
   function updateLinkedLoan() {
     const source = root.EstateAffordability.getPurchaseBudgetInputs(state.propertyType);
     state.maxLoan = source ? clean(source).maxLoan : '';
+    if(source&&state.monthlyOaAuto)state.monthlyOa=clean(source).monthlyOa;
     $('purchaseBudgetStatus').textContent = source
       ? 'Max Loan linked to Affordability Assessment for ' + propertyNames[state.propertyType] + '.'
       : 'Complete the age and income details in Affordability Assessment to use a calculated Max Loan.';
@@ -252,6 +275,7 @@
         return;
       }
       state = clean({...state, [key]:value});
+      if(key==='monthlyOa')state.monthlyOaAuto=false;
       if (key === 'maxLoan') linked = false;
       if (form.checkValidity()) $('purchaseBudgetStatus').textContent = '';
     }
@@ -271,7 +295,7 @@
       $('purchaseBudgetStatus').textContent = 'Enter age and income in Affordability Assessment first.';
       return;
     }
-    state = clean({...state, ...source});
+    state = clean({...state, ...source, monthlyOaAuto:true});
     linked = true;
     sync();
     persist();

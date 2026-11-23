@@ -10,14 +10,14 @@
   <link rel="stylesheet" href="theme-blue.css?v=scenario-type-1">
   <link rel="stylesheet" href="affordability.css?v=20261110-1">
   <script src="workspace-session.js?v=2" defer></script>
-  <script src="model.js?v=fees-1" defer></script><script src="affordability-model.js?v=assessment-4" defer></script><script src="lease-ltv-model.js?v=20261028-9" defer></script><script src="pdf.js?v=client-footer-1" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=fees-1" defer></script>
-  <script src="affordability.js?v=fees-1" defer></script>
+  <script src="model.js?v=calculation-audit-20261123" defer></script><script src="affordability-model.js?v=calculation-audit-20261123" defer></script><script src="lease-ltv-model.js?v=calculation-audit-20261123" defer></script><script src="pdf.js?v=client-footer-1" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=calculation-audit-20261123" defer></script>
+  <script src="affordability.js?v=calculation-audit-20261123" defer></script>
   <link rel="stylesheet" href="purchase-budget.css?v=4">
-  <script src="purchase-budget.js?v=7" defer></script>
+  <script src="purchase-budget.js?v=calculation-audit-20261123" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-5">
-  <script src="others.js?v=fees-1" defer></script>
+  <script src="others.js?v=calculation-audit-20261123" defer></script>
   <link rel="stylesheet" href="client-report.css?v=9">
-  <script src="client-report.js?v=11" defer></script>
+  <script src="client-report.js?v=calculation-audit-20261123" defer></script>
   <script src="workspace-fresh.js?v=2" defer></script>
 </head>
 <body>
@@ -73,7 +73,7 @@
     </section>
     </div>
     <section id="affordabilityView" role="tabpanel" aria-labelledby="affordabilityTab" hidden>
-      <div class="assessment-intro"><div><span class="eyebrow">SINGAPORE / BANK-LOAN PLANNING</span><h2>Know your borrowing range.</h2><p>Compare HDB, EC and condo financing with TDSR, MSR and age-based tenure limits.</p></div><div class="intro-actions"><span class="source-badge">Rules checked<br>28 OCT 2026</span><button type="button" class="button light" data-workspace-fresh>Start fresh ↺</button></div></div>
+      <div class="assessment-intro"><div><span class="eyebrow">SINGAPORE / BANK-LOAN PLANNING</span><h2>Know your borrowing range.</h2><p>Compare HDB, EC and condo financing with TDSR, MSR and age-based tenure limits.</p></div><div class="intro-actions"><span class="source-badge">Rules checked<br>23 NOV 2026</span><button type="button" class="button light" data-workspace-fresh>Start fresh ↺</button></div></div>
       <div class="assessment-context"><label class="field"><span class="field-label">Name</span><input id="affName" maxlength="80" placeholder="e.g. Our home affordability"></label><label class="field"><span class="field-label">Assessment date</span><input type="date" id="affDate"><span class="hint">Age follows this date. <button type="button" id="affToday" class="inline-button">Use today automatically</button></span></label></div>
       <details id="loanCalculator" class="amortisation loan-calculator">
         <summary>Loan Calculator <span>Compare monthly payments at two interest rates</span></summary>
@@ -105,7 +105,7 @@
       <div class="add-applicant-row"><button type="button" id="addApplicant" class="button dark">Add applicant +</button></div>
       <section class="aff-settings form-section"><div class="panel-heading"><span class="panel-number">02</span><div><h2>Your lending assumptions</h2><p>First housing loan. HDB and new EC use MSR, with the TDSR limit also checked. Condo uses TDSR.</p></div></div><div class="form-grid">
         <div class="field selection-field"><span class="field-label">Applicants to assess</span><div id="affSelection" class="applicant-choices" role="group" aria-label="Applicants to assess — lending assumptions"></div></div>
-        <label class="field"><span class="field-label">MAS Stress Test (%)</span><input type="number" min="0" max="25" step="0.1" id="affStress" value="4"></label>
+        <label class="field"><span class="field-label">MAS Stress Test (%)</span><input type="number" min="0" max="25" step="0.1" id="affStress" value="4"><span class="hint">Use the higher of 4% and the bank’s thereafter interest rate.</span></label>
         <div class="field"><span class="field-label">Maximum age at loan maturity</span><output class="calculated-output">65</output><span class="hint">The assessment ends by age 65.</span></div>
         <div class="field"><label class="field-label" for="affLoan">Max Loan used for repayments</label><output id="affLoan" class="calculated-output">—</output><button type="button" id="openPurchaseBudget" class="inline-button">Open Purchase Budget ↗</button></div>
         <label class="field"><span class="field-label">Loan tenure (years, optional)</span><input type="number" min="0" max="35" step="0.5" id="affStandardYears"></label>
@@ -119,7 +119,7 @@
       <div class="aff-actions"><button class="button dark" id="applyAffLoan">Use this loan in Property Planner ↗</button><button class="button light" id="exportAffPdf">Export PDF ↓</button></div><p class="small muted" id="affSaveStatus" role="status">Assessment stays in this window.</p></div>
         <details id="amortisation" class="amortisation"><summary>View amortisation table <span>Monthly principal, interest and remaining balance</span></summary><div id="amortTable"></div></details>
       </section></div></div>
-      <section class="aff-sources"><p>Automatic OA uses 2026 private-sector employee contribution and allocation tables for Singapore citizens / full-rate PRs, capped at $8,000 ordinary monthly wages. It excludes bonus CPF and assumes retirement contributions continue to RA from age 55. New age bands start in the month after the relevant birthday. Use a manual OA amount for other CPF profiles or years. OA contributions are not an assurance that CPF can fund the full mortgage.</p></section>
+      <section class="aff-sources"><p>Automatic OA uses the applicable 2026 or announced 2027 private-sector employee tables for Singapore citizens / full-rate PRs, capped at $8,000 ordinary monthly wages. It excludes bonus CPF and assumes retirement contributions continue to RA from age 55. New age bands start in the month after the relevant birthday. Later projections hold announced 2027 rates. Use a manual OA amount for other CPF profiles and any RA / MediSave redirection. OA contributions are not an assurance that CPF can fund the full mortgage.</p></section>
     </section>
     <section id="purchaseBudgetView" role="tabpanel" aria-labelledby="purchaseBudgetTab" hidden>
       <div class="assessment-intro">
@@ -137,7 +137,7 @@
           <label class="field"><span class="field-label">Current Cash Savings</span><input name="cashBalance" type="text" inputmode="numeric" data-currency></label>
           <label class="field"><span class="field-label">Monthly CPF OA added</span><input name="monthlyOa" type="text" inputmode="numeric" data-currency></label>
           <label class="field"><span class="field-label">Monthly cash saved</span><input name="monthlyCash" type="text" inputmode="numeric" data-currency></label>
-          <label class="field"><span class="field-label">Annual salary increment (%)</span><input name="salaryIncrease" type="number" min="0" max="100" step="0.01" inputmode="decimal"><span class="hint">For this projection, monthly CPF OA added and monthly cash saved grow by this percentage after each year.</span></label>
+          <label class="field"><span class="field-label">Annual salary increment (%)</span><input name="salaryIncrease" type="number" min="0" max="100" step="0.01" inputmode="decimal"><span class="hint">Salary and cash savings grow after each year. Linked automatic OA is recalculated using CPF wage ceilings and age bands.</span></label>
           <label class="field"><span class="field-label">Applicable ABSD rate (%)</span><input name="absdRate" type="number" min="0" max="100" step="1" inputmode="numeric"><span class="hint">Enter 0 if ABSD does not apply.</span></label>
           <label class="field"><span class="field-label">Target purchase price (optional)</span><input name="targetPrice" type="text" inputmode="numeric" data-currency></label>
         </form>
@@ -178,7 +178,7 @@
       </section>
       <div class="aff-sources">
         <p>Assumes a first bank housing loan capped at 75% of the price, with valuation equal to price. The cash estimate includes at least 5% of the price plus agent and miscellaneous fees. Stamp duty may need to be paid in cash before CPF reimbursement.</p>
-        <p>Link Affordability Assessment to show projected monthly salary. Year 1 uses today's monthly contributions. From Year 2, CPF OA additions and cash savings grow by the annual salary increment. A linked Max Loan uses projected salary and age at each year-end. Other lending inputs and the target price stay fixed. The projection excludes CPF interest and investment returns.</p>
+        <p>Link Affordability Assessment to show projected monthly salary. Year 1 uses the current salary. Linked automatic OA is recalculated each month using age bands and the $8,000 ordinary-wage ceiling. The table shows average monthly OA for each projection year. A manually entered OA amount follows your salary increment. A linked Max Loan uses projected salary and age at each year-end. Other lending inputs and the target price stay fixed. The projection uses announced 2026/2027 CPF rates and holds 2027 rates thereafter. It excludes bonus CPF, CPF interest, investment returns and transfers of existing OA to retirement savings at age 55.</p>
         <p>A negative target cash balance shows the top-up needed after using eligible CPF OA. A positive balance shows the cash left over.</p>
         <div class="source-links"><a href="https://www.iras.gov.sg/quick-links/tax-rates/stamp-duty" target="_blank" rel="noopener">IRAS stamp duty rates</a><a href="https://www.cpf.gov.sg/service/article/which-property-related-fees-can-i-use-my-cpf-savings-for" target="_blank" rel="noopener">CPF rules for purchase fees</a><a href="https://www.moneysense.gov.sg/buying-a-property-how-much-can-you-afford/" target="_blank" rel="noopener">MoneySense bank loan limits</a></div>
       </div>
@@ -188,13 +188,14 @@
       <div class="lease-workspace">
         <section class="form-section"><div class="panel-heading"><span class="panel-number">01</span><div><h2>Pro-rated LTV calculator</h2><p>Based on your remaining-lease formula, with an editable starting LTV.</p></div></div>
           <form id="leaseForm" novalidate><div class="form-grid">
-            <label class="field"><span class="field-label">Built year</span><input type="number" id="ltvBuiltYear" min="1800" max="2200" step="1" placeholder="e.g. 1992"><span class="hint">Used as the estimated lease-start year. Use the actual lease commencement year if known.</span></label>
+            <label class="field"><span class="field-label">Lease commencement year</span><input type="number" id="ltvBuiltYear" min="1800" max="2200" step="1" placeholder="e.g. 1992"><span class="hint">Use the actual lease-start year, which can differ from the building completion year.</span></label>
             <label class="field"><span class="field-label">Original lease term (years)</span><input type="number" id="ltvLeaseTerm" min="1" max="999" step="1" value="99"><span class="hint">Defaults to 99 years. Edit for a different original lease.</span></label>
             <label class="field"><span class="field-label">Current year</span><input type="number" id="ltvCurrentYear" min="1900" max="2200" step="1"><span class="hint"><button type="button" id="ltvUseYear" class="inline-button">Use the current year automatically</button></span></label>
-            <div class="field"><span class="field-label">Remaining lease of property</span><output id="ltvRemaining" class="calculated-output">—</output><span class="hint">Original lease − (current year − built year).</span></div>
+            <div class="field"><span class="field-label">Remaining lease of property</span><output id="ltvRemaining" class="calculated-output">—</output><span class="hint">Original lease − (current year − lease commencement year).</span></div>
             <label class="field"><span class="field-label">DOB of youngest buyer (optional)</span><input type="text" id="ltvDob" data-dob-input inputmode="numeric" maxlength="11" placeholder="DDMMYYYY" autocomplete="bday"><span class="hint">Enter DDMMYYYY (e.g. 05021990 → 05-Feb-1990). Uses the actual birthday, with today’s month/day in the selected current year.</span></label>
             <label class="field"><span class="field-label">Age of youngest buyer</span><input type="number" id="ltvAge" min="0" max="120" step="1" placeholder="Enter age or DOB"><span class="hint"><span id="ltvAgeMode"></span> <button type="button" id="ltvUseDob" class="inline-button">Use DOB age</button></span></label>
             <label class="field"><span class="field-label">Current LTV limit (%)</span><input type="number" id="ltvLimit" min="0" max="100" step="0.1" value="75"><span class="hint">Defaults to 75%. Edit to test another applicable LTV limit.</span></label>
+            <label class="field"><span class="field-label">Valuation / market value (optional)</span><input id="ltvValuation" data-currency inputmode="decimal" maxlength="18" placeholder="Same as property price"></label>
             <label class="field"><span class="field-label">Property price</span><input id="ltvPrice" data-currency inputmode="decimal" maxlength="18" placeholder="Enter property price"><span class="hint"><button type="button" class="inline-button" id="ltvUsePrice">Use HDB Property Planner price</button></span></label>
           </div></form><div id="ltvMessages" class="assessment-warnings" role="status"></div>
           <div class="aff-actions"><button type="button" class="button light" id="exportOthersPdf">Export PDF ↓</button></div><p class="small muted" id="othersSaveStatus" role="status">Values stay in this window.</p>
@@ -202,7 +203,7 @@
         <aside class="summary lease-summary" aria-label="Pro-rated LTV result"><div class="summary-top"><span class="eyebrow">02 / THE LEASE ADJUSTMENT</span><span class="live-pill">LIVE ESTIMATE</span></div><p>Pro-rated LTV</p><div class="primary" id="ltvResult">—</div><p class="result-caption" id="ltvStatus">Enter the lease and buyer details to calculate.</p><div class="lease-loan"><span>Maximum loan · formula estimate</span><strong id="ltvMaxLoan">—</strong><p class="full-loan-comparison"><span id="ltvFullLabel">Original full loan at 75% LTV</span><span id="ltvFullLoan">—</span></p><p class="full-loan-comparison"><span>Difference · original less pro-rated loan</span><span id="ltvDifference">—</span></p></div><div class="metric"><span>Lease covers the youngest buyer to</span><strong id="ltvCoverage">—</strong></div><p class="device-note">The applied LTV stays between 0% and the current limit.</p></aside>
       </div>
       <section class="form-section lease-working"><span class="eyebrow">03 / YOUR CALCULATION</span><h3>The formula, made clear.</h3><p class="lease-formula">((Remaining lease − 20) ÷ (95 − youngest age − 20)) × current LTV limit</p><p id="ltvWorking"></p><p id="ltvLoanWorking"></p></section>
-      <section class="aff-sources"><span class="eyebrow">LEASE ASSUMPTIONS &amp; SCOPE</span><p>Built year is an estimate of lease commencement, which may differ from the actual lease start. The default original lease is 99 years and may be edited. If the lease reaches age 95, the current LTV applies without pro-rating. A remaining lease of 20 years or less gives 0% under this formula. The calculation uses the unrounded ratio for the maximum loan.</p><p>This tool implements the supplied formula as a planning estimate. HDB lease-based loan limits and CPF usage rules are related but are separate from bank-loan assessments. Actual financing also depends on the lower price/valuation, age, tenure, income, lender credit assessment and eligibility; this tool's maximum loan is simply property price × applied pro-rated LTV.</p><div class="source-links"><a href="https://www.hdb.gov.sg/buying-a-flat/flat-grant-and-loan-eligibility/housing-loan/housing-loan-from-hdb" target="_blank" rel="noopener">HDB housing-loan guidance ↗</a><a href="https://www.cpf.gov.sg/service/article/how-much-cpf-savings-can-i-use-to-buy-a-property-if-its-lease-does-not-cover-the-youngest-buyer-to-age-95" target="_blank" rel="noopener">CPF age-95 lease guidance ↗</a></div></section>
+      <section class="aff-sources"><span class="eyebrow">LEASE ASSUMPTIONS &amp; SCOPE</span><p>Use the actual lease commencement year. Building completion and lease commencement can differ. The default original lease is 99 years and may be edited. If the lease reaches age 95, the current LTV applies without pro-rating. A remaining lease of 20 years or less gives 0% under this formula. The calculation uses the unrounded ratio for the maximum loan.</p><p>This tool implements the supplied formula as a planning estimate. HDB lease-based loan limits and CPF usage rules are related but are separate from bank-loan assessments. Actual financing also depends on the lower price/valuation, age, tenure, income, lender credit assessment and eligibility; this tool applies the pro-rated LTV to the lower price / valuation. Use the HFE letter for an approved HDB loan limit.</p><div class="source-links"><a href="https://www.hdb.gov.sg/buying-a-flat/flat-grant-and-loan-eligibility/housing-loan/housing-loan-from-hdb" target="_blank" rel="noopener">HDB housing-loan guidance ↗</a><a href="https://www.cpf.gov.sg/service/article/how-much-cpf-savings-can-i-use-to-buy-a-property-if-its-lease-does-not-cover-the-youngest-buyer-to-age-95" target="_blank" rel="noopener">CPF age-95 lease guidance ↗</a></div></section>
     </section>
     <section id="clientReportView" role="tabpanel" aria-labelledby="clientReportTab" hidden>
       <div class="assessment-intro">

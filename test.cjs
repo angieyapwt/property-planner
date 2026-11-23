@@ -5,15 +5,15 @@ eq(m.stampDuty(600000),12600);eq(m.stampDuty(1000000),24600);
 eq(m.commission(1000000,1,true,''),10900);eq(m.commission(1000000,1,true,12345),12345);eq(m.commission(1000000,1,true,0),0);eq(m.commission(1000000,1,false,12345),0);
 const d={buyPrice:600000,buyValuation:550000,buyLoan:500000,buyCpf:1000000,buyCommissionOn:false,saleCommissionOn:false,loanType:'HDB loan'};
 for(const s of ['buy-hdb','hdb-to-hdb']){
- let r=m.calculate(s,d);eq(r.buy.loan,412500);eq(r.buy.cov,50000);eq(r.buy.loanGap,37500);eq(r.topUp,50000);
+ let r=m.calculate(s,d);eq(r.buy.loan,0);eq(r.buy.cov,50000);eq(r.buy.loanGap,37500);eq(r.topUp,50000);
  r=m.calculate(s,{...d,buyGrant:1000000});eq(r.topUp,50000);
  r=m.calculate(s,{...d,loanType:'Bank loan'});eq(r.topUp,77500);let rows=r.buy.rows;eq(rows.findIndex(x=>x.label.startsWith('Cash-over-valuation')),rows.findIndex(x=>x.label==='25% downpayment by cash / CPF')-1);
  r=m.calculate(s,{...d,loanType:'No loan'});eq(r.buy.loan,0);eq(r.topUp,50000);eq(r.buy.loanGap,0);
- for(const value of [600000,650000,'']){r=m.calculate(s,{...d,buyValuation:value});eq(r.buy.loan,450000);eq(r.topUp,0);}
+ for(const value of [600000,650000,'']){r=m.calculate(s,{...d,buyValuation:value});eq(r.buy.loan,0);eq(r.topUp,0);}
  r=m.calculate(s,{...d,buyValuation:0});eq(r.buy.loan,0);eq(r.topUp,600000);
  r=m.calculate(s,{...d,buyCpf:0});eq(r.topUp,200100);
 }
-let r=m.calculate('hdb-to-hdb',{...d,salePrice:500000,saleLoan:100000,saleCpf:200000});eq(r.sale.proceeds,200000);eq(r.buy.paydown,100000);eq(r.buy.loanUsed,312500);eq(r.topUp,0);eq(r.buffer,150000);
+let r=m.calculate('hdb-to-hdb',{...d,buyCpf:100000,salePrice:500000,saleLoan:100000,saleCpf:200000});eq(r.sale.proceeds,200000);eq(r.buy.paydown,100000);eq(r.buy.loanUsed,312500);eq(r.topUp,100);eq(r.buffer,0);
 r=m.calculate('hdb-to-hdb',{...d,salePrice:500000,saleLoan:100000,saleCpf:200000,buyPaydown:0});eq(r.buy.paydown,0);
 for(const s of Object.keys(m.scenarios)){r=m.calculate(s,{...d,salePrice:900000,saleLoan:300000,saleCpf:200000,cashSavings:10000});assert.ok(Number.isFinite(r.primary));count++;for(const g of r.groups)for(const row of g.rows){assert.ok(Number.isFinite(row.value));count++;}}
 r=m.calculate('sell-condo',{salePrice:1000000,saleLoan:400000,saleCpf:100000,saleLegal:3000,saleMisc:1000,saleRate:2,saleOverride:12345});eq(r.primary,483655);

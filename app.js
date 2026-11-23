@@ -6,13 +6,13 @@
   const money=v=>new Intl.NumberFormat('en-SG',{style:'currency',currency:'SGD',maximumFractionDigits:0}).format(Object.is(v,-0)?0:v);
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const STORAGE='angie-property-studio-v1';
-  const numericKeys=['salePrice','saleLoan','saleCpf','saleHip','saleLevy','saleSsd','salePenalty','saleLegal','saleMisc','saleRate','saleOverride','buyPrice','buyValuation','buyLoan','buyPaydown','buyCpf','buyGrant','buyLegal','buyMisc','buyRate','buyOverride','absdRate','cashSavings'];
-  const boolKeys=['saleCommissionOn','buyCommissionOn','saleCommissionGst','buyCommissionGst','buyLoanAuto'];
+  const numericKeys=['salePrice','saleLoan','saleCpf','saleHip','saleLevy','saleSsd','salePenalty','saleLegal','saleMisc','saleRate','saleOverride','buyPrice','buyValuation','buyLtv','buyLoan','buyPaydown','buyCpf','buyGrant','buyLegal','buyMisc','buyRate','buyOverride','absdRate','cashSavings'];
+  const boolKeys=['saleCommissionOn','buyCommissionOn','saleCommissionGst','buyCommissionGst','buyLoanAuto','saleAtMarketValue','secondHdbLoan'];
   const knownKeys=[...numericKeys,...boolKeys,'loanType'];
   let drafts={},current,savingAvailable=true,toastTimer;
   const assessmentSeeded=new Set();
   const sharedSession={buy:{},sell:{},cash:{}};
-  const defaultInputs=scenario=>{const c=scenarios[scenario];return {saleLegal:c.sell==='condo'?3000:2500,saleMisc:1000,saleRate:2,saleCommissionOn:true,saleCommissionGst:true,buyLegal:c.buy==='condo'?3000:2500,buyMisc:1000,buyRate:1,buyCommissionOn:true,buyCommissionGst:true,buyLoanAuto:true,loanType:c.buy==='hdb'?'HDB loan':'Bank loan',absdRate:0};};
+  const defaultInputs=scenario=>{const c=scenarios[scenario];return {saleAtMarketValue:true,secondHdbLoan:true,buyLtv:75,saleLegal:c.sell==='condo'?3000:2500,saleMisc:1000,saleRate:2,saleCommissionOn:true,saleCommissionGst:true,buyLegal:c.buy==='condo'?3000:2500,buyMisc:1000,buyRate:1,buyCommissionOn:true,buyCommissionGst:true,buyLoanAuto:true,loanType:c.buy==='hdb'?'HDB loan':'Bank loan',absdRate:0};};
   const blank=scenario=>({scenario,name:'',notes:'',inputs:defaultInputs(scenario)});
   function cleanRecord(r){
     if(!r||typeof r!=='object'||!Object.hasOwn(scenarios,r.scenario))throw Error('Unknown scenario');
@@ -48,11 +48,12 @@
     const input=$('buyLoan');
     if(!input)return;
     const auto=current.inputs.buyLoanAuto!==false;
-    const value=auto?n(current.inputs.buyPrice)*.75:current.inputs.buyLoan;
+    const rules=PropertyModel.loanRules(scenarios[current.scenario].buy==='hdb',current.inputs.loanType,current.inputs.buyLtv);
+    const value=auto?calculate(current.scenario,current.inputs).buy.loan:current.inputs.buyLoan;
     if(auto)current.inputs.buyLoan=has(current.inputs.buyPrice)?String(value):'';
     if(auto||document.activeElement!==input)input.value=has(value)?money(n(value)):'';
     input.disabled=current.inputs.loanType==='No loan';
-    const button=$('autoLoan');if(button){button.textContent=auto?'Automatic · 75% of purchase price':'Use automatic 75%';button.classList.toggle('is-auto',auto);}
+    const button=$('autoLoan');if(button){button.textContent=auto?'Automatic · up to '+(rules.ltv*100)+'%':'Use automatic '+(rules.ltv*100)+'%';button.classList.toggle('is-auto',auto);}
   }
   function rememberShared(record){
     const c=scenarios[record.scenario];
@@ -73,17 +74,21 @@
   function panel(number,title,description,fields,commission=''){return `<section class="form-section"><div class="panel-heading"><span class="panel-number">${number}</span><div><h2>${title}</h2><p>${description}</p></div></div><div class="form-grid">${fields}</div>${commission}</section>`;}
   function renderFields(){const c=scenarios[current.scenario];let html='';
     if(c.sell){const hdb=c.sell==='hdb';html+=panel('A',hdb?'Your HDB sale':'Your condo sale','Start with your sale price and the amounts to be returned.',[
-      moneyField('salePrice','Selling price'),moneyField('saleLoan','Outstanding loan'),moneyField('saleCpf','CPF refund with accrued interest'),
-      ...(hdb?[moneyField('saleHip','Outstanding HIP, if any'),moneyField('saleLevy','Resale levy, if applicable')]:[moneyField('saleSsd','Seller stamp duty, if any')]),
+      moneyField('salePrice','Selling price'),moneyField('saleLoan','Outstanding loan'),moneyField('saleCpf','Required CPF refund with accrued interest'),
+      '<label class="checkline"><input type="checkbox" data-key="saleAtMarketValue" '+(current.inputs.saleAtMarketValue!==false?'checked':'')+'> Sale is at or above market value</label>',
+      ...(hdb?[moneyField('saleHip','Outstanding HIP, if any'),moneyField('saleLevy','Resale levy, if applicable')]:[]),
+      moneyField('saleSsd','Seller stamp duty, if any','Enter the confirmed IRAS amount. Residential acquisitions from 4 July 2025 have a four-year SSD period.'),
       moneyField('salePenalty','Bank penalty, if any'),moneyField('saleLegal','Seller legal fee'),moneyField('saleMisc','Seller miscellaneous fee','Cash only.')
     ].join(''),commissionFields('sale'));}
     if(c.buy){const hdb=c.buy==='hdb';const loanOptions=hdb?[['HDB loan','HDB loan'],['Bank loan','Bank loan'],['No loan','No loan']]:[['Bank loan','Bank loan'],['No loan','No loan']];
       html+=panel(c.sell?'B':'A',hdb?'Your HDB purchase':'Your condo purchase','Build a complete picture of your purchase and financing.',[
         moneyField('buyPrice','Purchase price'),moneyField('buyValuation',hdb?'HDB valuation':'Bank valuation / market value','Leave blank to use the purchase price. Any price above valuation is cash only.','Same as price'),
-        selectField('loanType','Loan type',loanOptions),('<div class="loan-field">'+moneyField('buyLoan','Approved loan amount','Starts at 75% of purchase price. You may enter a lower approved amount. The loan used is capped by valuation.')+'<button type="button" id="autoLoan" class="auto-loan">Use automatic 75%</button></div>'),
-        ...(hdb&&c.sell&&current.inputs.loanType==='HDB loan'?[moneyField('buyPaydown','Second HDB loan proceeds paydown','Blank uses 50% of positive sale proceeds, capped at the approved loan. Enter 0 to override.','Auto')]:[]),
-        moneyField('buyCpf','Total CPF OA available','Include any CPF refund you intend to use for this purchase.'),...(hdb?[moneyField('buyGrant','CPF housing grants, if any')]:[]),
-        selectField('absdRate','ABSD profile',hdb?[[0,'Not applicable - 0%'],[5,'SPR first property, if applicable - 5%']]:[[0,'SC first residential property - 0%'],[20,'SC second residential property - 20%'],[5,'PR first residential property - 5%'],[30,'PR second residential property - 30%']], 'Select the profile that applies to the purchase.'),
+        selectField('loanType','Loan type',loanOptions),
+        ...(current.inputs.loanType==='Bank loan'?[selectField('buyLtv','Applicable bank LTV limit',[[75,'75% · first housing loan'],[55,'55% · first loan, longer tenure / maturity after 65'],[45,'45% · one existing housing loan'],[25,'25% · one existing loan, longer tenure / maturity after 65'],[35,'35% · two or more existing housing loans'],[15,'15% · two or more existing loans, longer tenure / maturity after 65']], 'Use the reduced limit if tenure exceeds 25 years for HDB / 30 years for private property, or maturity is after age 65.')]:current.inputs.loanType==='HDB loan'?['<label class="field"><span class="field-label">HDB LTV limit (%)</span><input type="number" min="0" max="75" step="0.01" data-key="buyLtv" value="'+esc(current.inputs.buyLtv)+'"><span class="hint">Use the pro-rated limit in the HFE letter for a short-lease flat.</span></label>']:[]),
+        ('<div class="loan-field">'+moneyField('buyLoan','Approved loan amount','Uses the applicable LTV and lower price/valuation. Enter a lower approved amount if needed. HDB loans also use available CPF and grants upfront.')+'<button type="button" id="autoLoan" class="auto-loan">Use automatic LTV</button></div>'),
+        ...(hdb&&c.sell&&current.inputs.loanType==='HDB loan'?['<label class="checkline"><input type="checkbox" data-key="secondHdbLoan" '+(current.inputs.secondHdbLoan!==false?'checked':'')+'> Taking a second HDB housing loan</label>',...(current.inputs.secondHdbLoan!==false?[moneyField('buyPaydown','Second HDB loan proceeds paydown','Auto retains the higher of $25,000 or 50% of positive proceeds, capped at the loan. Use HDB’s assessed amount if different.','Auto')]:[])]:[]),
+        moneyField('buyCpf','Total CPF OA available','Enter usable OA after retirement set-asides / optional HDB retention. Include the usable sale refund once.'),...(hdb?[moneyField('buyGrant','CPF housing grants, if any')]:[]),
+        selectField('absdRate','ABSD profile',hdb?[[0,'Not applicable - 0%'],[5,'SPR first property, if applicable - 5%']]:[[0,'SC first residential property - 0%'],[20,'SC second residential property - 20%'],[5,'PR first residential property - 5%'],[30,'PR second property / SC third and subsequent - 30%'],[35,'PR third and subsequent property - 35%'],[60,'Foreigner, before treaty remission - 60%'],[65,'Entity / trust, before remission - 65%']], 'For joint buyers, use the highest applicable profile. Confirm any remission before selecting a lower rate.'),
         moneyField('buyLegal','Buyer legal fee'),moneyField('buyMisc','Buyer miscellaneous fee','Cash only.')
       ].join(''),commissionFields('buy'));
       html+=panel(c.sell?'C':'B','Your available cash','Allocate the cash you want to use for this move.',moneyField('cashSavings','Cash savings allocated','Additional to sale proceeds. CPF is accounted for separately.'));
@@ -94,7 +99,7 @@
     $('scenario').value=current.scenario;$('scenarioDescription').textContent=c.description;$('estimateName').value=current.name;$('notes').value=current.notes;
   }
   function metric(label,value){return `<div class="metric"><span>${label}</span><strong>${money(value)}</strong></div>`;}
-  function renderSummary(){syncCommissionFields();const v=calculate(current.scenario,current.inputs);$('primaryLabel').textContent=v.primaryLabel;$('primary').textContent=v.hasFigures?money(v.primary):'$—';$('exportPdf').disabled=!v.hasFigures;
+  function renderSummary(){syncAutoLoan();syncCommissionFields();const v=calculate(current.scenario,current.inputs);$('primaryLabel').textContent=v.primaryLabel;$('primary').textContent=v.hasFigures?money(v.primary):'$—';$('exportPdf').disabled=!v.hasFigures;
     const grantsApply=v.config.buy==='hdb';
     $('resultCaption').textContent=!v.hasFigures?'Enter your figures to start planning.':v.buy?(v.topUp>0?'After eligible CPF, '+(grantsApply?'grants, ':'')+'allocated savings'+(v.sale?' and sale proceeds.':'.'):'Your allocated funds cover this estimate. Review the breakdown below.'):(v.primary<0?'Your sale figures show a shortfall to be funded.':'After your loan, CPF refund, fees and commission.');
     let metrics='';if(v.buy){metrics+=metric('Loan used',v.buy.loanUsed)+metric(grantsApply?'CPF + grants used':'CPF OA used',v.buy.cpfUsed+v.buy.grantUsed);if(v.sale)metrics+=metric('Sale proceeds',v.sale.proceeds);metrics+=metric('Purchase cash needed',v.buy.cashNeeded)+metric('Cash remaining',v.buffer);}else if(v.sale){metrics=metric('Selling price',v.sale.price)+metric('Total deductions',v.sale.price-v.sale.proceeds);}
@@ -108,10 +113,10 @@
   function switchScenario(scenario){rememberShared(current);drafts[current.scenario]=structuredClone(current);current=hydrateShared(drafts[scenario]?cleanRecord(drafts[scenario]):blank(scenario));render();persist();}
   function download(bytes,type,name){const url=URL.createObjectURL(new Blob([bytes],{type}));const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
   function filename(name){return PropertyPdf.filename(name);}
-  function inputDetails(){const labels={salePrice:'Selling price',saleLoan:'Outstanding sale loan',saleCpf:'CPF refund with accrued interest',saleHip:'Outstanding HIP',saleLevy:'Resale levy',saleSsd:'Seller stamp duty',salePenalty:'Bank penalty',saleLegal:'Seller legal fee',saleMisc:'Seller miscellaneous fee',saleRate:'Seller commission rate (%)',saleOverride:'Seller edited commission including GST',buyPrice:'Purchase price',buyValuation:'Valuation / market value',buyLoan:'Approved purchase loan',buyPaydown:'Second HDB loan proceeds paydown',buyCpf:'CPF OA available',buyGrant:'CPF housing grants',buyLegal:'Buyer legal fee',buyMisc:'Buyer miscellaneous fee',buyRate:'Buyer commission rate (%)',buyOverride:'Buyer edited commission including GST',absdRate:'ABSD rate (%)',cashSavings:'Cash savings allocated',loanType:'Loan type',saleCommissionOn:'Include seller commission',buyCommissionOn:'Include buyer commission',saleCommissionGstChoice:'Seller commission with GST',saleCommissionPlainChoice:'Seller commission without GST',buyCommissionGstChoice:'Buyer commission with GST',buyCommissionPlainChoice:'Buyer commission without GST'};
+  function inputDetails(){const labels={salePrice:'Selling price',saleLoan:'Outstanding sale loan',saleCpf:'Required CPF refund with accrued interest',saleAtMarketValue:'Sale at or above market value',secondHdbLoan:'Second HDB housing loan',buyLtv:'Applicable LTV limit (%)',saleHip:'Outstanding HIP',saleLevy:'Resale levy',saleSsd:'Seller stamp duty',salePenalty:'Bank penalty',saleLegal:'Seller legal fee',saleMisc:'Seller miscellaneous fee',saleRate:'Seller commission rate (%)',saleOverride:'Seller edited commission including GST',buyPrice:'Purchase price',buyValuation:'Valuation / market value',buyLoan:'Approved purchase loan',buyPaydown:'Second HDB loan proceeds paydown',buyCpf:'CPF OA available',buyGrant:'CPF housing grants',buyLegal:'Buyer legal fee',buyMisc:'Buyer miscellaneous fee',buyRate:'Buyer commission rate (%)',buyOverride:'Buyer edited commission including GST',absdRate:'ABSD rate (%)',cashSavings:'Cash savings allocated',loanType:'Loan type',saleCommissionOn:'Include seller commission',buyCommissionOn:'Include buyer commission',saleCommissionGstChoice:'Seller commission with GST',saleCommissionPlainChoice:'Seller commission without GST',buyCommissionGstChoice:'Buyer commission with GST',buyCommissionPlainChoice:'Buyer commission without GST'};
     labels.saleOverride=current.inputs.saleCommissionGst===false?'Seller edited commission (without GST)':'Seller edited commission including GST';
     labels.buyOverride=current.inputs.buyCommissionGst===false?'Buyer edited commission (without GST)':'Buyer edited commission including GST';
-    const keys=[...$('fields').querySelectorAll('[data-key]')].map(el=>el.dataset.key);return keys.map(k=>({label:labels[k]||k,value:k.endsWith('Choice')?((k.endsWith('GstChoice')?current.inputs[k.startsWith('sale')?'saleCommissionGst':'buyCommissionGst']!==false:current.inputs[k.startsWith('sale')?'saleCommissionGst':'buyCommissionGst']===false)&&current.inputs[k.startsWith('sale')?'saleCommissionOn':'buyCommissionOn']!==false?'Yes':'No'):boolKeys.includes(k)?(current.inputs[k]===false?'No':'Yes'):k==='loanType'?current.inputs[k]:k.endsWith('Rate')?String(n(current.inputs[k]))+'%':has(current.inputs[k])?money(n(current.inputs[k])):k==='buyValuation'?'Same as purchase price':k.endsWith('Override')?money(calculatedCommission(k.startsWith('sale')?'sale':'buy'))+' (automatic)':k==='buyPaydown'?'Auto: 50% of positive sale proceeds, capped at loan':'Not entered'}));
+    const keys=[...$('fields').querySelectorAll('[data-key]')].map(el=>el.dataset.key);return keys.map(k=>({label:labels[k]||k,value:k.endsWith('Choice')?((k.endsWith('GstChoice')?current.inputs[k.startsWith('sale')?'saleCommissionGst':'buyCommissionGst']!==false:current.inputs[k.startsWith('sale')?'saleCommissionGst':'buyCommissionGst']===false)&&current.inputs[k.startsWith('sale')?'saleCommissionOn':'buyCommissionOn']!==false?'Yes':'No'):boolKeys.includes(k)?(current.inputs[k]===false?'No':'Yes'):k==='loanType'?current.inputs[k]:(k.endsWith('Rate')||k==='buyLtv')?String(n(current.inputs[k]))+'%':has(current.inputs[k])?money(n(current.inputs[k])):k==='buyValuation'?'Same as purchase price':k.endsWith('Override')?money(calculatedCommission(k.startsWith('sale')?'sale':'buy'))+' (automatic)':k==='buyPaydown'?'Auto: proceeds less the higher of $25,000 or 50%, capped at loan':'Not entered'}));
   }
   function reportData(){const v=calculate(current.scenario,current.inputs);if(!v.hasFigures)return null;return {name:current.name||scenarios[current.scenario].label,scenario:scenarios[current.scenario].label,date:new Date().toLocaleString('en-SG',{timeZone:'Asia/Singapore'}),inputs:inputDetails(),groups:v.groups.map(g=>({...g,rows:g.rows.map(r=>({...r,amount:money(r.value)}))})),notes:current.notes,primaryLabel:v.primaryLabel,primary:money(v.primary)};}
   function exportPdf(){try{const data=reportData();if(!data)return;const bytes=PropertyPdf.reportPdf(data);download(bytes,'application/pdf',filename(data.name)+'.pdf');toast('PDF report downloaded.');}catch{toast('PDF export failed. Your figures are still available. Try again.');}}
@@ -132,8 +137,8 @@
       if(!knownKeys.includes(key))return;
       current.inputs[key]=input.type==='checkbox'?input.checked:input.value;if(key==='buyLoan'||key==='buyPrice')assessmentSeeded.delete(current.scenario);
       if(key==='buyLoan')current.inputs.buyLoanAuto=!has(input.value);
-      if(key==='loanType')renderFields();
-      else if(key==='buyPrice'||key==='buyLoan')syncAutoLoan();
+      if(key==='loanType'||key==='secondHdbLoan')renderFields();
+      else if(key==='buyPrice'||key==='buyLoan'||key==='buyLtv')syncAutoLoan();
     }
     rememberShared(current);renderSummary();persist();
   }

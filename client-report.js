@@ -10,7 +10,7 @@
   const defaults = {
     client:'', address:'', type:'condo', financing:'Bank loan', price:'', valuation:'',
     loan:'', oa:'', cash:'', grant:'', absd:'0', legal:'', misc:'', agent:'',
-    years:'', rateOne:'', rateTwo:'', notes:'', agentNote:'', splitCash:'', splitCpf:''
+    years:'', rateOne:'', rateTwo:'', notes:'', agentNote:'', splitCash:'', splitCpf:'', ltv:'75'
   };
   const privateAgentNote = 'If co-broking is allowed by the seller’s agent, no commission is payable by you. Otherwise, it is 1% + 9% GST.';
   const amounts = ['price','valuation','loan','oa','cash','grant','legal','misc','agent','splitCash','splitCpf'];
@@ -24,10 +24,10 @@
     for (const [key, limit] of [['client',65],['address',85],['notes',150],['agentNote',120]]) {
       state[key] = String(raw[key] ?? '').replace(/\s+/g,' ').slice(0,limit);
     }
-    for (const key of [...amounts,'absd','years','rateOne','rateTwo']) {
+    for (const key of [...amounts,'absd','years','rateOne','rateTwo','ltv']) {
       const rawValue = String(raw[key] ?? '').trim();
       const value = Number(rawValue);
-      const limit = key === 'absd' ? 100 : key === 'years' ? 35 : amounts.includes(key) ? 1e10 : 25;
+      const limit = key === 'absd' ? 100 : key === 'ltv' ? 75 : key === 'years' ? 35 : amounts.includes(key) ? 1e10 : 25;
       if (rawValue && Number.isFinite(value) && value >= (key==='valuation'?1:0) && value <= limit) state[key] = rawValue;
     }
     return state;
@@ -44,8 +44,14 @@
     const resolved = Object.fromEntries(Object.entries(automatic).map(([key,value]) =>
       [key,d[key] === '' ? value : d[key]]));
     const plain = key => d[key] === '' ? '' : Number(d[key]).toFixed(4);
+    let limit=Number(d.ltv);
+    const ltvError=d.financing==='Bank loan'&&![75,55,45,35,25,15].includes(limit)
+      ? 'Choose a bank LTV limit of 75%, 55%, 45%, 35%, 25% or 15%.':'';
+    if(d.financing==='Bank loan'&&Number(d.years)>(d.type==='hdb'?25:30)){
+      limit=({75:55,45:25,35:15})[limit]??limit;
+    }
     const {buy} = property.calculate(d.type === 'hdb' ? 'buy-hdb' : 'buy-condo', {
-      loanType:d.financing, buyPrice:plain('price'), buyValuation:plain('valuation'),
+      loanType:d.financing, buyLtv:limit, buyPrice:plain('price'), buyValuation:plain('valuation'),
       buyLoan:plain('loan'), buyCpf:plain('oa'), buyGrant:plain('grant'),
       buyLegal:resolved.legal, buyMisc:resolved.misc, buyOverride:resolved.agent,
       buyCommissionOn:true, absdRate:plain('absd')
@@ -53,13 +59,15 @@
     const bankLoan = d.financing === 'Bank loan';
     const hasLoan = d.financing !== 'No loan';
     const lowValuation = buy.valuation < buy.price;
-    const priceLoan = buy.price*.75;
-    const valuationLoan = buy.valuation*.75;
-    const share = bankLoan ? .20 : .25;
+    const priceLoan = buy.price*buy.ltv;
+    const valuationLoan = buy.valuation*buy.ltv;
+    const share = 1-buy.ltv-buy.cashRate;
+    const splitLabel=(Math.round(share*10000)/100)+'% Cash / CPF';
+    const ltvLabel=(Math.round(buy.ltv*10000)/100)+'%';
     const eligibleDownpayment = buy.basis*share;
     const grantForDownpayment = Math.min(buy.grantUsed,eligibleDownpayment);
     const defaultCpf = Math.min(Number(d.oa),eligibleDownpayment-grantForDownpayment);
-    const splitTotal = Math.round(buy.price*share-grantForDownpayment);
+    const splitTotal = Math.round(eligibleDownpayment-grantForDownpayment);
     const splitEdited = hasLoan && (d.splitCash !== '' || d.splitCpf !== '');
     const splitCpf = d.splitCpf !== '' ? Number(d.splitCpf)
       : d.splitCash !== '' ? splitTotal-Number(d.splitCash) : Math.round(defaultCpf);
@@ -67,11 +75,15 @@
     const splitError = hasLoan && splitEdited && (splitCash < 0 || splitCpf < 0 || splitCash+splitCpf !== splitTotal)
       ? 'Cash and CPF for this downpayment must add up to '+money(splitTotal)+'.'
       : hasLoan && splitEdited && splitCpf > Math.round(eligibleDownpayment-grantForDownpayment)
-        ? 'CPF for this downpayment is limited to '+money(eligibleDownpayment-grantForDownpayment)+'.' : '';
+        ? 'CPF for this downpayment is limited to '+money(eligibleDownpayment-grantForDownpayment)+'.'
+      : hasLoan && splitEdited && splitCpf > Number(d.oa)
+        ? 'The CPF portion exceeds the available OA balance.'
+      : d.financing==='HDB loan' && splitEdited && splitCpf<Math.round(defaultCpf)
+        ? 'An HDB loan uses available OA upfront. Adjust CPF OA available to reflect any permitted retention.' : '';
     const downpaymentSplit = money(splitCash)+' Cash + '+money(splitCpf)+' CPF'
       +(grantForDownpayment>0?' + '+money(grantForDownpayment)+' grant':'');
     const cpfUsed = splitEdited && !splitError
-      ? splitCpf+Math.min(buy.cpfUsed-defaultCpf,Math.max(Number(d.oa)-splitCpf,0))
+      ? splitCpf+Math.min(Math.max(buy.cpfUsed-defaultCpf,0),Math.max(Number(d.oa)-splitCpf,0))
       : buy.cpfUsed;
     // The purchase requirement already uses the valuation-capped loan.
     const cashNeeded = buy.requirement-buy.grantUsed-cpfUsed;
@@ -86,9 +98,11 @@
     const row = (label,value,bold=false,alert=false) => ({label,value:money(value),bold,alert});
     const title = bankLoan ? 'Financial - Bank Loan' : hasLoan ? 'Financial - HDB Loan' : 'Financial - No Loan';
     const date = new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Singapore',day:'2-digit',month:'short',year:'numeric'}).format(now);
-    const valid = buy.price > 0 && !splitError && (!buy.loanUsed || (months >= 1 && rates.some(rate => rate !== '')));
+    const termLimit=d.financing==='HDB loan'?25:d.type==='hdb'?30:35;
+    const termError=buy.loanUsed&&months>termLimit*12?'Loan tenure exceeds the '+termLimit+'-year limit.':'';
+    const valid = buy.price > 0 && !splitError && !termError && !ltvError && (!buy.loanUsed || (months >= 1 && rates.some(rate => rate !== '')));
     return {
-      valid, resolved, split:{visible:hasLoan,label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',cash:splitCash,cpf:splitCpf,error:splitError},
+      valid, resolved, split:{visible:hasLoan,label:splitLabel,cash:splitCash,cpf:splitCpf,error:splitError},
       client:d.client.trim(), address:d.address.trim(), title, date,
       preparedBy:'PREPARED BY ANGIE YAP AND AMETHYST TEO',
       property:d.type === 'hdb' ? 'HDB resale purchase' : d.type === 'ec' ? 'EC purchase' : 'Private property purchase',
@@ -100,14 +114,15 @@
       purchase:[
         row('PROPERTY PRICE',buy.price,true),
         row(d.valuation === '' ? 'Valuation assumed equal to purchase price' : 'Indicative valuation',buy.valuation,false,lowValuation),
-        ...(hasLoan ? [row('75% loan on purchase price',priceLoan)] : []),
+        ...(hasLoan ? [row(ltvLabel+' loan on purchase price',priceLoan)] : []),
         ...(hasLoan && lowValuation ? [
-          row('75% loan on valuation',valuationLoan,false,true),
+          row(ltvLabel+' loan on valuation',valuationLoan,false,true),
           row('Cash top-up from lower valuation',buy.loanGap,false,true)
         ] : []),
-        ...(hasLoan ? [{label:bankLoan?'20% Cash / CPF':'25% Cash / CPF',value:downpaymentSplit}] : []),
-        ...(bankLoan ? [row('5% Cash',buy.price*.05)] : []),
-        ...(hasLoan && buy.maxLoan>buy.loan ? [row('Loan Shortfall',buy.maxLoan-buy.loan,false,true)] : []),
+        ...(hasLoan ? [{label:splitLabel+(lowValuation?' (valuation basis)':''),value:downpaymentSplit}] : []),
+        ...(bankLoan ? [row((buy.cashRate*100)+'% Cash'+(lowValuation?' (valuation basis)':''),buy.basis*buy.cashRate)] : []),
+        ...(hasLoan && buy.approvalShortfall>0 ? [row('Loan Shortfall',buy.approvalShortfall,false,true)] : []),
+        ...(buy.cpfLoanReduction>0 ? [row('Loan reduction from upfront CPF / grants',buy.cpfLoanReduction)] : []),
         ...(buy.cov > 0 ? [row('Cash over valuation',buy.cov)] : []),
         {label:'Stamp duty (BSD + ABSD)',value:money(buy.bsd)+' + '+money(buy.absd)+' = '+money(buy.stampDutyTotal)},
         row('Legal fees',Number(resolved.legal)),
@@ -133,9 +148,9 @@
         {label:'Total CPF',value:money(cpfUsed),balance:balance('CPF',d.oa,cpfUsed)}
       ],
       status: !buy.price ? 'Enter a purchase price to prepare the report.'
-        : splitError || (!valid ? 'Enter the loan tenure and at least one interest rate to download.'
+        : splitError || termError || ltvError || (!valid ? 'Enter the loan tenure and at least one interest rate to download.'
         : d.loan!=='' && Number(d.loan)>buy.loanUsed && d.financing!=='No loan'
-          ? 'The report uses '+money(buy.loanUsed)+', capped by the lower of price and valuation.'
+          ? 'The report uses '+money(buy.loanUsed)+', after the applicable LTV and upfront CPF / grant requirements.'
           : 'Review these figures before sharing the PDF.')
     };
   }
@@ -146,10 +161,12 @@
       const {buy,inputs,type,name} = purchase;
       const optional = key => property.has(inputs[key]) ? property.n(inputs[key]) : '';
       Object.assign(fields,{
-        type, client:name, financing:inputs.loanType, price:buy.price, valuation:optional('buyValuation'),
+        type, client:name, financing:inputs.loanType, price:buy.price, valuation:optional('buyValuation'),ltv:optional('buyLtv')||75,
         loan:inputs.buyLoanAuto && !buy.paydown ? '' : buy.loanUsed,
         oa:optional('buyCpf'), cash:optional('cashSavings'),
-        grant:type==='hdb' ? optional('buyGrant') : '', absd:property.n(inputs.absdRate)
+        grant:type==='hdb' ? optional('buyGrant') : '', absd:property.n(inputs.absdRate),
+        legal:optional('buyLegal'),misc:optional('buyMisc'),
+        agent:property.has(inputs.buyOverride)||inputs.buyCommissionOn===false||inputs.buyCommissionGst===false||property.n(inputs.buyRate)!==1?buy.fee:''
       });
     }
     if (mortgage) {
@@ -187,6 +204,7 @@
     <label class="field"><span class="field-label">Financing</span><select name="financing"><option>Bank loan</option><option>HDB loan</option><option>No loan</option></select></label>
     ${amountField('price','Purchase price')}${amountField('valuation','Indicative valuation (optional)')}
     ${amountField('loan','Approved loan amount (optional)')}${amountField('cash','Cash savings (optional)')}
+    ${numeric('ltv','Applicable LTV limit (%)',75)}
     ${amountField('oa','CPF OA available')}${amountField('grant','HDB housing grant (if applicable)')}
     <fieldset id="clientDownpayment" class="client-downpayment client-note">
       <legend id="clientDownpaymentLabel"></legend>

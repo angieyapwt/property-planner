@@ -1,4 +1,4 @@
-/* Bank-loan planning rules checked against MAS and CPF Board on 28 Oct 2026. */
+/* Bank-loan planning rules checked against MAS and CPF Board on 23 Nov 2026. */
 (function(root){
   'use strict';
   const n=v=>Math.max(Number(String(v??'').replace(/[^\d.-]/g,''))||0,0);
@@ -56,22 +56,23 @@
       const b=dateParts(a.dob),d=dateParts(asOf),months=(d[0]-b[0])*12+d[1]-b[1];
       bandAge=months/12; // A new contribution band starts the month after the birthday.
     }
-    const allocation=bandAge<=35?[.1621,.2162]:bandAge<=45?[.1891,.2432]:bandAge<=50?[.2162,.2702]:bandAge<=55?[.3108,.2837]:bandAge<=60?[.3382,.3088]:bandAge<=65?[.44,.42]:bandAge<=70?[.303,.6363]:[.08,.84];
-    const employer=bandAge<=55?.17:bandAge<=60?.16:bandAge<=65?.125:bandAge<=70?.09:.075;
-    const totalRate=bandAge<=55?.37:bandAge<=60?.34:bandAge<=65?.25:bandAge<=70?.165:.125;
-    const lowFactor=bandAge<=55?.6:bandAge<=60?.54:bandAge<=65?.375:bandAge<=70?.225:.15;
+    const year=Number(asOf.slice(0,4)),newRates=year>=2027;
+    const allocation=bandAge<=35?[.1621,.2162]:bandAge<=45?[.1891,.2432]:bandAge<=50?[.2162,.2702]:bandAge<=55?[.3108,.2837]:bandAge<=60?(newRates?[.3661,.2957]:[.3382,.3088]):bandAge<=65?(newRates?[.4615,.4038]:[.44,.42]):bandAge<=70?[.303,.6363]:[.08,.84];
+    const employer=bandAge<=55?.17:bandAge<=60?(newRates?.165:.16):bandAge<=65?(newRates?.13:.125):bandAge<=70?.09:.075;
+    const totalRate=bandAge<=55?.37:bandAge<=60?(newRates?.355:.34):bandAge<=65?(newRates?.26:.25):bandAge<=70?.165:.125;
+    const lowFactor=bandAge<=55?.6:bandAge<=60?(newRates?.57:.54):bandAge<=65?(newRates?.39:.375):bandAge<=70?.225:.15;
     const wage=Math.min(n(a.income),8000);
     const contribution=wage<=50?0:Math.round(wage<=500?wage*employer:wage<=750?wage*employer+lowFactor*(wage-500):wage*totalRate);
     const ma=cents(contribution*allocation[1]),retirement=age>=55&&a.frsMet?0:cents(contribution*allocation[0]);
-    return {amount:cents(contribution-ma-retirement),age,bandAge,contribution,manual:false,yearSupported:asOf.slice(0,4)==='2026'};
+    return {amount:cents(contribution-ma-retirement),age,bandAge,contribution,manual:false,yearSupported:year===2026||year===2027,rateYear:newRates?2027:2026};
   }
   function applicantValues(a,asOf){
     const cpf=cpfOa(a,asOf),monthly=n(a.income),annual=n(a.annual)/12;
     return {age:cpf.age,cpf:cpf.amount,gross:monthly+annual,recognized:monthly+annual*.7,debt:n(a.car)+n(a.card)+n(a.other)+n(a.housing),housing:n(a.housing)};
   }
   function selectedIndices(state){const s=state.settings.selection;return s==='pair'?[0,1].filter(i=>i<state.applicants.length):/^\d+$/.test(s)&&+s<state.applicants.length?[+s]:state.applicants.map((_,i)=>i);}
-  function payment(principal,rate,months){const p=n(principal),r=n(rate)/1200,m=Math.max(0,Math.floor(months));if(!m||!p)return 0;return r?p*r/(1-Math.pow(1+r,-m)):p/m;}
-  function presentValue(monthly,rate,months){const r=n(rate)/1200,m=Math.max(0,Math.floor(months));return !m?0:r?n(monthly)*(1-Math.pow(1+r,-m))/r:n(monthly)*m;}
+  function payment(principal,rate,months){const p=n(principal),r=n(rate)/1200,m=Math.max(0,Math.floor(months));if(!m||!p)return 0;return r?p*r/-Math.expm1(-m*Math.log1p(r)):p/m;}
+  function presentValue(monthly,rate,months){const r=n(rate)/1200,m=Math.max(0,Math.floor(months));return !m?0:r?n(monthly)*-Math.expm1(-m*Math.log1p(r))/r:n(monthly)*m;}
   function amortize(principal,rate,months){
     const length=Math.max(0,Math.min(420,Math.floor(months))),r=n(rate)/1200,pay=cents(payment(principal,rate,length));let balance=cents(n(principal)),interestTotal=0,principalTotal=0;const rows=[];
     for(let month=1;month<=length&&balance>0;month++){const opening=balance,interest=cents(opening*r),principal=month===length?opening:Math.min(opening,Math.max(cents(pay-interest),0)),instalment=cents(principal+interest);balance=cents(opening-principal);principalTotal=cents(principalTotal+principal);interestTotal=cents(interestTotal+interest);rows.push({month,opening,payment:instalment,principal,interest,balance});}
