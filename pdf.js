@@ -53,7 +53,7 @@
     const {scenario,inputs=[],groups=[],notes,primaryLabel,primary,assumptions}=doc;
     wrap(name,38).forEach(l=>{ensure(34);text(l,39,y,25,'F3',navy);y-=32;});
     line(scenario,11,false,blue);line('Prepared '+date,8,false,muted);y-=8;
-    ensure(90);rect(39,y-67,517,78,navy);text(primaryLabel.toUpperCase(),54,y-9,8,'F2','0.73 0.84 1');text(primary,54,y-45,28,'F3','1 1 1');text('SGD  /  ESTIMATE ONLY',406,y-46,7.5,'F1','0.73 0.84 1');y-=94;
+    ensure(90);rect(39,y-67,517,78,navy);text(primaryLabel.toUpperCase(),54,y-9,8,'F2','0.73 0.84 1');text(primary,54,y-45,28,'F3','1 1 1');text(doc.kind==='checklist'?'CHECKLIST / PROGRESS':'SGD  /  ESTIMATE ONLY',406,y-46,7.5,'F1','0.73 0.84 1');y-=94;
     for(const group of groups){
       section(group.title);
       let stripe=false;
@@ -71,10 +71,10 @@
         y-=height;stripe=!stripe;
       }
     }
-    section('Figures entered');
+    section(doc.kind==='checklist'?'Checklist details':'Figures entered');
     for(const r of inputs){const lines=wrap(r.label+': '+r.value,85);ensure(lines.length*16+5);lines.forEach(l=>line(l,9,false,muted));}
     if(notes){section('Planning notes');for(const paragraph of notes.split(/\r?\n/))wrap(paragraph,89).forEach(l=>line(l,9.5));}
-    ensure(310);section('Assumptions & calculation notes');
+    ensure(doc.kind==='checklist'?100:310);section(doc.kind==='checklist'?'Checklist notes':'Assumptions & calculation notes');
     for(const p of (assumptions||[
       'Automatic loan amount starts at 75% of purchase price. The loan used is capped at 75% of the lower price or valuation. A lower edited approval reduces financing.',
       'Cash-over-valuation and the bank minimum cash downpayment cannot use CPF or grants. Actual loan and CPF eligibility may be lower than these estimates.',
@@ -241,12 +241,13 @@
     pages.push(ops.join('\n'));
     return finishPages(pages,842,595,navy,muted,pageSink);
   }
-  function workspaceReport({planner, assessment, budget, others, client},now=new Date()){
+  function workspaceReport({planner, assessment, budget, others, client, checklist},now=new Date()){
     const pages=[];
     for(const data of [planner,assessment]) if(data) reportPdf(data,pages);
     if(budget) purchaseBudget(budget,now,pages);
     if(others) reportPdf(others,pages);
     if(client) clientReport(client,pages);
+    if(checklist) reportPdf(checklist,pages);
     return pages.length ? encodePages(pages) : null;
   }
   const api={reportPdf,combinedReport,clientReport,purchaseBudget,workspaceReport,wrap,filename:reportFilename};

@@ -1,10 +1,11 @@
-/* Workspace actions shared by all five tabs. */
+/* Workspace actions shared by every tab. */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
   const tabs = {
     planner:window.EstatePlannerBridge, assessment:window.EstateAffordability,
-    budget:window.EstatePurchaseBudget, others:window.EstateOthers, client:window.EstateClientReport
+    budget:window.EstatePurchaseBudget, others:window.EstateOthers, client:window.EstateClientReport,
+    checklist:window.EstateChecklist
   };
   const dialog = $('workspaceFreshDialog');
   const fileInput = $('workspaceRestoreFile');
@@ -74,8 +75,9 @@
     button.addEventListener('click',() => actions[button.dataset.workspaceAction]()));
   function readWorkspace(file) {
     if (file?.type === 'estate-basics-workspace' && file.version === 1 &&
-        Object.keys(tabs).every(name => file.tabs?.[name] && typeof file.tabs[name] === 'object' && !Array.isArray(file.tabs[name]))) {
+        ['planner','assessment','budget','others','client'].every(name => file.tabs?.[name] && typeof file.tabs[name] === 'object' && !Array.isArray(file.tabs[name]))) {
       if (!file.tabs.planner.current || !Array.isArray(file.tabs.client.edited)) throw Error('Invalid workspace');
+      if(Object.hasOwn(file.tabs,'checklist')&&(!file.tabs.checklist||typeof file.tabs.checklist!=='object'||Array.isArray(file.tabs.checklist)))throw Error('Invalid checklist');
       return file.tabs;
     }
     if (file?.version === 1 && Array.isArray(file.cases) && file.current) {

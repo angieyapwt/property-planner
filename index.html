@@ -10,15 +10,18 @@
   <link rel="stylesheet" href="theme-blue.css?v=scenario-type-1">
   <link rel="stylesheet" href="affordability.css?v=20261110-1">
   <script src="workspace-session.js?v=2" defer></script>
-  <script src="model.js?v=bank-downpayment-20261124" defer></script><script src="affordability-model.js?v=calculation-audit-20261123" defer></script><script src="lease-ltv-model.js?v=calculation-audit-20261123" defer></script><script src="pdf.js?v=client-footer-1" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=calculation-audit-20261123" defer></script>
-  <script src="affordability.js?v=calculation-audit-20261123" defer></script>
+  <script src="model.js?v=bank-downpayment-20261124" defer></script><script src="affordability-model.js?v=calculation-audit-20261123" defer></script><script src="lease-ltv-model.js?v=calculation-audit-20261123" defer></script><script src="pdf.js?v=checklist-1" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=calculation-audit-20261123" defer></script>
+  <script src="affordability.js?v=checklist-1" defer></script>
   <link rel="stylesheet" href="purchase-budget.css?v=4">
   <script src="purchase-budget.js?v=calculation-audit-20261123-2" defer></script>
   <link rel="stylesheet" href="others.css?v=20261028-5">
   <script src="others.js?v=calculation-audit-20261123" defer></script>
   <link rel="stylesheet" href="client-report.css?v=9">
   <script src="client-report.js?v=calculation-audit-20261123" defer></script>
-  <script src="workspace-fresh.js?v=2" defer></script>
+  <link rel="stylesheet" href="checklist.css?v=1">
+  <script src="checklist-data.js?v=1" defer></script>
+  <script src="checklist.js?v=1" defer></script>
+  <script src="workspace-fresh.js?v=checklist-1" defer></script>
 </head>
 <body>
   <a class="skip" href="#workspace">Skip to calculator</a>
@@ -37,6 +40,7 @@
       <button id="purchaseBudgetTab" role="tab" aria-selected="false" aria-controls="purchaseBudgetView" tabindex="-1">Purchase Budget</button>
       <button id="othersTab" role="tab" aria-selected="false" aria-controls="othersView" tabindex="-1">Others</button>
       <button id="clientReportTab" role="tab" aria-selected="false" aria-controls="clientReportView" tabindex="-1">Client Report</button>
+      <button id="checklistTab" role="tab" aria-selected="false" aria-controls="checklistView" tabindex="-1">Checklist</button>
     </div>
     <div id="plannerView" role="tabpanel" aria-labelledby="plannerTab">
     <div class="assessment-intro"><h2>Property Planner</h2><button type="button" class="button light" data-workspace-fresh>Start fresh ↺</button></div>
@@ -229,13 +233,21 @@
         </div>
       </div>
     </section>
+    <section id="checklistView" role="tabpanel" aria-labelledby="checklistTab" hidden>
+      <div class="assessment-intro"><div><span class="eyebrow">ESTATE BASICS / TRANSACTION CHECKLIST</span><h2>Your transaction checklist</h2><p>Review each item, mark any that are not applicable, and keep your case notes together.</p></div><button type="button" class="button light" data-workspace-fresh>Start fresh ↺</button></div>
+      <div class="checklist-context"><label class="field"><span class="field-label">Name</span><input id="checklistName" maxlength="80" autocomplete="off"></label></div>
+      <div id="checklistTypes" class="checklist-types" role="group" aria-label="Choose a checklist"></div>
+      <section class="checklist-overview" aria-labelledby="checklistTitle"><div><h3 id="checklistTitle"></h3><strong id="checklistProgressText" aria-live="polite"></strong><progress id="checklistProgress" aria-label="Checklist items reviewed" value="0" max="1"></progress><p id="checklistCounts"></p></div><button type="button" id="exportChecklistPdf" class="button dark">Export checklist PDF ↓</button></section>
+      <div id="checklistGroups" class="checklist-groups"></div>
+      <p id="checklistSaveStatus" class="small muted" role="status">Progress stays in this window. Save all to device keeps a copy of every checklist.</p>
+    </section>
   </main>
   <footer><a class="brand footer-brand" href="./"><span class="brand-mark">EB</span><span>ESTATE BASICS<small>PROPERTY PLANNING</small></span></a><nav class="workspace-actions" aria-label="Workspace files"><button type="button" class="button light" data-workspace-action="save">Save all to device</button><button type="button" class="button light" data-workspace-action="restore">Restore all</button><button type="button" class="button dark" data-workspace-action="pdf">Export combined PDF ↓</button></nav></footer>
 
 
 
 
-<dialog id="workspaceFreshDialog" aria-labelledby="workspaceFreshTitle"><h2 id="workspaceFreshTitle">Start fresh?</h2><p>This resets all five tabs to their defaults. You can restore a previously downloaded workspace file.</p><div class="backup-actions"><button type="button" class="button light" id="cancelWorkspaceFresh">Keep working</button><button type="button" class="button dark" id="confirmWorkspaceFresh">Start fresh</button></div></dialog>
+<dialog id="workspaceFreshDialog" aria-labelledby="workspaceFreshTitle"><h2 id="workspaceFreshTitle">Start fresh?</h2><p>This resets every tab to its defaults. You can restore a previously downloaded workspace file.</p><div class="backup-actions"><button type="button" class="button light" id="cancelWorkspaceFresh">Keep working</button><button type="button" class="button dark" id="confirmWorkspaceFresh">Start fresh</button></div></dialog>
   <input type="file" id="workspaceRestoreFile" accept=".json,application/json" hidden>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 </body>
