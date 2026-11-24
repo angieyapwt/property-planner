@@ -7,7 +7,7 @@ const d={buyPrice:600000,buyValuation:550000,buyLoan:500000,buyCpf:1000000,buyCo
 for(const s of ['buy-hdb','hdb-to-hdb']){
  let r=m.calculate(s,d);eq(r.buy.loan,0);eq(r.buy.cov,50000);eq(r.buy.loanGap,37500);eq(r.topUp,50000);
  r=m.calculate(s,{...d,buyGrant:1000000});eq(r.topUp,50000);
- r=m.calculate(s,{...d,loanType:'Bank loan'});eq(r.topUp,77500);let rows=r.buy.rows;eq(rows.findIndex(x=>x.label.startsWith('Cash-over-valuation')),rows.findIndex(x=>x.label==='25% downpayment by cash / CPF')-1);
+ r=m.calculate(s,{...d,loanType:'Bank loan'});eq(r.topUp,77500);let rows=r.buy.rows;eq(rows.findIndex(x=>x.label.startsWith('Cash-over-valuation')),rows.findIndex(x=>x.label==='20% downpayment by cash / CPF')-1);
  r=m.calculate(s,{...d,loanType:'No loan'});eq(r.buy.loan,0);eq(r.topUp,50000);eq(r.buy.loanGap,0);
  for(const value of [600000,650000,'']){r=m.calculate(s,{...d,buyValuation:value});eq(r.buy.loan,0);eq(r.topUp,0);}
  r=m.calculate(s,{...d,buyValuation:0});eq(r.buy.loan,0);eq(r.topUp,600000);

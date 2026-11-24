@@ -80,7 +80,7 @@
       const cashNeeded=cashOnly+Math.max(cpfEligible-grantUsed-cpfUsed,0);
       const loanGap=Math.max(price-valuation,0)*ltv;
       const ltvLabel=String(Math.round(ltv*10000)/100)+'%';
-      const cashCpfRate=1-ltv-(!isHdb?cashRate:0);
+      const cashCpfRate=1-ltv-cashRate;
       const downpaymentLabel=String(Math.round(cashCpfRate*10000)/100)+'% downpayment by cash / CPF';
       const downRows=loanType==='No loan'?[row('Purchase without a loan',price,'guide')]:[
         row(downpaymentLabel,basis*cashCpfRate,'guide'),
