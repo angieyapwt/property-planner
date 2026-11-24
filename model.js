@@ -80,9 +80,10 @@
       const cashNeeded=cashOnly+Math.max(cpfEligible-grantUsed-cpfUsed,0);
       const loanGap=Math.max(price-valuation,0)*ltv;
       const ltvLabel=String(Math.round(ltv*10000)/100)+'%';
-      const downpaymentLabel=String(Math.round((1-ltv)*10000)/100)+'% downpayment by cash / CPF';
+      const cashCpfRate=1-ltv-(!isHdb?cashRate:0);
+      const downpaymentLabel=String(Math.round(cashCpfRate*10000)/100)+'% downpayment by cash / CPF';
       const downRows=loanType==='No loan'?[row('Purchase without a loan',price,'guide')]:[
-        row(downpaymentLabel,basis*(1-ltv),'guide'),
+        row(downpaymentLabel,basis*cashCpfRate,'guide'),
         ...(loanType==='Bank loan'?[row((cashRate*100)+'% cash downpayment',cashDown,'guide')]:[])
       ];
       buy={price,valuation,basis,ltv,cashRate,loan,maxLoan,loanUsed,paydown,cov,loanGap,approvalShortfall,cpfLoanReduction,bsd,absd,stampDutyTotal,fee,requirement,grantUsed,cpfUsed,cashOnly,cashNeeded,
