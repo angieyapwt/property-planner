@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="theme-blue.css?v=scenario-type-1">
   <link rel="stylesheet" href="affordability.css?v=20261110-1">
   <script src="workspace-session.js?v=2" defer></script>
-  <script src="model.js?v=bank-downpayment-20261124" defer></script><script src="affordability-model.js?v=calculation-audit-20261123" defer></script><script src="lease-ltv-model.js?v=calculation-audit-20261123" defer></script><script src="pdf.js?v=checklist-1" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=calculation-audit-20261123" defer></script>
+  <script src="model.js?v=bank-downpayment-20261124" defer></script><script src="affordability-model.js?v=calculation-audit-20261123" defer></script><script src="lease-ltv-model.js?v=calculation-audit-20261123" defer></script><script src="pdf.js?v=checklist-notes-2" defer></script><script src="dob-input.js?v=20261028-4" defer></script><script src="app.js?v=calculation-audit-20261123" defer></script>
   <script src="affordability.js?v=checklist-1" defer></script>
   <link rel="stylesheet" href="purchase-budget.css?v=4">
   <script src="purchase-budget.js?v=calculation-audit-20261123-2" defer></script>
@@ -18,9 +18,9 @@
   <script src="others.js?v=calculation-audit-20261123" defer></script>
   <link rel="stylesheet" href="client-report.css?v=9">
   <script src="client-report.js?v=calculation-audit-20261123" defer></script>
-  <link rel="stylesheet" href="checklist.css?v=1">
-  <script src="checklist-data.js?v=1" defer></script>
-  <script src="checklist.js?v=1" defer></script>
+  <link rel="stylesheet" href="checklist.css?v=general-notes-2">
+  <script src="checklist-data.js?v=general-notes-2" defer></script>
+  <script src="checklist.js?v=general-notes-2" defer></script>
   <script src="workspace-fresh.js?v=checklist-1" defer></script>
 </head>
 <body>
@@ -239,6 +239,7 @@
       <div id="checklistTypes" class="checklist-types" role="group" aria-label="Choose a checklist"></div>
       <section class="checklist-overview" aria-labelledby="checklistTitle"><div><h3 id="checklistTitle"></h3><strong id="checklistProgressText" aria-live="polite"></strong><progress id="checklistProgress" aria-label="Checklist items reviewed" value="0" max="1"></progress><p id="checklistCounts"></p></div><button type="button" id="exportChecklistPdf" class="button dark">Export checklist PDF ↓</button></section>
       <div id="checklistGroups" class="checklist-groups"></div>
+      <section class="form-section checklist-general-notes"><label class="field"><span class="field-label" id="checklistGeneralNotesLabel">General notes</span><textarea id="checklistGeneralNotes" rows="5" maxlength="50000"></textarea></label></section>
       <p id="checklistSaveStatus" class="small muted" role="status">Progress stays in this window. Save all to device keeps a copy of every checklist.</p>
     </section>
   </main>

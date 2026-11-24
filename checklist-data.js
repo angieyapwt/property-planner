@@ -13,11 +13,7 @@
           {
             "id": "hdb-seller-a4",
             "text": "MOP fulfilled (5 years)",
-            "cell": "A4",
-            "verification": {
-              "text": "Check the flat’s actual MOP. Standard / unclassified flats generally have 5 years, Plus / Prime 10 years, and Fresh Start flats 20 years.",
-              "url": "https://www.hdb.gov.sg/managing-my-home/selling-a-flat/eligibility"
-            }
+            "cell": "A4"
           },
           {
             "id": "hdb-seller-a5",
@@ -218,38 +214,22 @@
           {
             "id": "hdb-buyer-a4",
             "text": "At least one Singapore Citizen",
-            "cell": "A4",
-            "verification": {
-              "text": "Confirm the household’s eligibility scheme in the HFE letter. Eligible all-PR households can also buy resale flats, subject to the relevant conditions.",
-              "url": "https://www.hdb.gov.sg/e-resale/resale-purchase-of-an-hdb-resale-flat"
-            }
+            "cell": "A4"
           },
           {
             "id": "hdb-buyer-a5",
             "text": "PR buyers must purchase with a Singapore Citizen (extra premium $10,000)",
-            "cell": "A5",
-            "verification": {
-              "text": "Confirm the SC/PR household’s scheme and financial plan. The $10,000 can relate to a new-flat premium or a difference in the housing grant, depending on the scheme.",
-              "url": "https://www.hdb.gov.sg/apply-for-topup-grant-or-citizen-topup/terms-and-conditions"
-            }
+            "cell": "A5"
           },
           {
             "id": "hdb-buyer-a6",
             "text": "Non Citizen must purchase with a Singapore Citizen (extra premium $15,000)",
-            "cell": "A6",
-            "verification": {
-              "text": "Confirm eligibility under the applicable non-citizen family / spouse scheme. Check any $15,000 premium against the specific new-flat scheme and HFE financial plan.",
-              "url": "https://www.hdb.gov.sg/apply-for-topup-grant-or-citizen-topup/terms-and-conditions"
-            }
+            "cell": "A6"
           },
           {
             "id": "hdb-buyer-a7",
             "text": "PR couples must be at least 3 years (extra premium $10,000)",
-            "cell": "A7",
-            "verification": {
-              "text": "Confirm the PR residence-period requirement and applicable stamp duties. Verify the workbook’s $10,000 amount against the actual scheme and HFE financial plan.",
-              "url": "https://www.hdb.gov.sg/e-resale/resale-purchase-of-an-hdb-resale-flat"
-            }
+            "cell": "A7"
           },
           {
             "id": "hdb-buyer-a8",
@@ -296,11 +276,7 @@
           {
             "id": "hdb-buyer-a18",
             "text": "Buyer has not taken more than 2 HDB loans",
-            "cell": "A18",
-            "verification": {
-              "text": "Confirm eligibility for the proposed loan in the HFE letter, including the number of previous HDB housing loans and any second-loan conditions.",
-              "url": "https://www.hdb.gov.sg/buying-a-flat/flat-grant-and-loan-eligibility/housing-loan/housing-loan-from-hdb"
-            }
+            "cell": "A18"
           },
           {
             "id": "hdb-buyer-a20",

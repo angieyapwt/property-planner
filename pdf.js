@@ -73,7 +73,8 @@
     }
     section(doc.kind==='checklist'?'Checklist details':'Figures entered');
     for(const r of inputs){const lines=wrap(r.label+': '+r.value,85);ensure(lines.length*16+5);lines.forEach(l=>line(l,9,false,muted));}
-    if(notes){section('Planning notes');for(const paragraph of notes.split(/\r?\n/))wrap(paragraph,89).forEach(l=>line(l,9.5));}
+    if(notes){section(doc.kind==='checklist'?'General notes':'Planning notes');for(const paragraph of notes.split(/\r?\n/))wrap(paragraph,89).forEach(l=>line(l,9.5));}
+    if(doc.kind!=='checklist'||assumptions?.length){
     ensure(doc.kind==='checklist'?100:310);section(doc.kind==='checklist'?'Checklist notes':'Assumptions & calculation notes');
     for(const p of (assumptions||[
       'Automatic loan amount starts at 75% of purchase price. The loan used is capped at 75% of the lower price or valuation. A lower edited approval reduces financing.',
@@ -83,6 +84,7 @@
       'Stamp duties use the higher price or market value. Confirm grants, CPF limits, duties, financing and payment timing before committing.',
       'Generated on your device. Your saved figures are held in your browser; keep a separate backup if needed.'
     ])){wrap(p,94).forEach(l=>line(l,8.3,false,muted));y-=3;}
+    }
     }
     pages.push(ops.join('\n'));
     return finishPages(pages,595,842,navy,muted,pageSink);

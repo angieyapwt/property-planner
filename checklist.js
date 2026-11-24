@@ -7,7 +7,7 @@
   const statuses={pending:'Pending',done:'Done',na:'N/A'};
 
   function defaults() {
-    return {version:1,selected:sheets[0].id,name:'',nameAuto:true,entries:{}};
+    return {version:2,selected:sheets[0].id,name:'',nameAuto:true,entries:{},generalNotes:{}};
   }
 
   function clean(raw) {
@@ -19,15 +19,24 @@
     for(const [id,value] of Object.entries(raw.entries||{})) {
       if(!ids.has(id)||!value||typeof value!=='object')continue;
       const status=Object.hasOwn(statuses,value.status)?value.status:'pending';
-      const notes=String(value.notes??'').slice(0,1500);
-      if(status!=='pending'||notes)state.entries[id]={status,notes};
+      if(status!=='pending')state.entries[id]={status};
+    }
+    for(const sheet of sheets) {
+      let notes=String(raw.generalNotes?.[sheet.id]??'').slice(0,50000);
+      for(const item of itemsFor(sheet)) {
+        const previous=String(raw.entries?.[item.id]?.notes??'').slice(0,1500);
+        if(!previous)continue;
+        const block='['+item.cell+'] '+item.text+'\n'+previous;
+        if(!notes.includes(block))notes+=(notes?'\n\n':'')+block;
+      }
+      if(notes)state.generalNotes[sheet.id]=notes;
     }
     return state;
   }
 
   function update(raw,id,changes) {
     const state=clean(raw);
-    if(ids.has(id))state.entries[id]={status:'pending',notes:'',...state.entries[id],...changes};
+    if(ids.has(id))state.entries[id]={status:changes.status??state.entries[id]?.status??'pending'};
     return clean(state);
   }
 
@@ -44,7 +53,7 @@
   }
 
   function usedSheets(state) {
-    return sheets.filter(sheet=>itemsFor(sheet).some(item=>state.entries[item.id]));
+    return sheets.filter(sheet=>state.generalNotes[sheet.id]?.trim()||itemsFor(sheet).some(item=>state.entries[item.id]));
   }
 
   function reportData(raw,now=new Date(),allUsed=false) {
@@ -61,18 +70,11 @@
         {label:'Progress',value:counts.done+' done, '+counts.na+' N/A, '+counts.pending+' pending'}],
       groups:selected.flatMap(sheet=>sheet.groups.map(group=>({
         title:sheet.name+' / '+group.title,
-        rows:group.items.flatMap(item=>{
-          const entry=state.entries[item.id]||{status:'pending',notes:''};
-          return [{label:item.text,amount:statuses[entry.status]},
-            ...(item.verification?[{label:'Verification note: '+item.verification.text,amount:''}]:[]),
-            ...entry.notes.split(/\r?\n/).filter(Boolean).map(note=>({label:'Note: '+note,amount:''}))];
-        })
+        rows:group.items.map(item=>({label:item.text,amount:statuses[state.entries[item.id]?.status||'pending']}))
       }))),
-      assumptions:[
-        'Source: Checklist (1).xlsx. The four worksheets retain their original checklist wording.',
-        'Reviewed includes items marked Done or N/A. Pending items remain open.',
-        'Selected HDB items include verification notes with HDB guidance checked on 24 Nov 2026.'
-      ]
+      notes:selected.filter(sheet=>state.generalNotes[sheet.id]?.trim()).map(sheet=>
+        (selected.length>1?sheet.name+'\n':'')+state.generalNotes[sheet.id]).join('\n\n'),
+      assumptions:[]
     };
   }
 
@@ -83,7 +85,6 @@
   const key='estate-basics-checklist-v1';
   const escape=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   let state=defaults();
-  const openNotes=new Set();
   try{state=clean(JSON.parse(root.EstateDraft.getItem(key)||'null'));}catch{}
 
   function sharedName() {
@@ -107,6 +108,8 @@
     const sheet=sheets.find(sheet=>sheet.id===state.selected);
     const counts=progress(itemsFor(sheet),state);
     $('checklistName').value=currentState().name;
+    $('checklistGeneralNotesLabel').textContent='General notes for '+sheet.name;
+    $('checklistGeneralNotes').value=state.generalNotes[sheet.id]||'';
     $('checklistTypes').innerHTML=sheets.map(value=>{
       const total=progress(itemsFor(value),state);
       return `<button type="button" class="checklist-type" data-checklist-type="${value.id}" aria-pressed="${value.id===state.selected}"><span>${escape(value.name)}</span><small>${total.reviewed} / ${total.total} reviewed</small></button>`;
@@ -119,12 +122,10 @@
     $('checklistGroups').innerHTML=sheet.groups.map(group=>{
       const total=progress(group.items,state);
       return `<section class="checklist-group" aria-labelledby="${group.id}-title"><div class="checklist-group-heading"><h3 id="${group.id}-title">${escape(group.title)}</h3><span>${total.reviewed} / ${total.total}</span></div>${group.items.map(item=>{
-        const entry=state.entries[item.id]||{status:'pending',notes:''};
+        const entry=state.entries[item.id]||{status:'pending'};
         return `<div class="checklist-item ${entry.status}" data-checklist-item="${item.id}">
           <div class="checklist-item-main"><label class="checklist-item-label" for="${item.id}-done"><input id="${item.id}-done" data-checklist-status="done" data-item="${item.id}" type="checkbox" ${entry.status==='done'?'checked':''}><span>${escape(item.text)}</span></label>
           <label class="checklist-na" title="Not applicable"><input id="${item.id}-na" data-checklist-status="na" data-item="${item.id}" type="checkbox" aria-label="Not applicable: ${escape(item.text)}" ${entry.status==='na'?'checked':''}> N/A</label></div>
-          ${item.verification?`<p class="checklist-verification"><strong>Verify for this case.</strong> ${escape(item.verification.text)} <a href="${escape(item.verification.url)}" target="_blank" rel="noopener">HDB guidance</a></p>`:''}
-          <details class="checklist-notes" data-item="${item.id}" ${entry.notes||openNotes.has(item.id)?'open':''}><summary>Notes${entry.notes?' added':''}</summary><textarea data-checklist-notes="${item.id}" aria-label="Notes for ${escape(item.text)}" maxlength="1500" rows="2">${escape(entry.notes)}</textarea></details>
         </div>`;
       }).join('')}</section>`;
     }).join('');
@@ -146,19 +147,10 @@
     $(input.id).focus({preventScroll:true});
     persist();
   });
-  $('checklistGroups').addEventListener('input',event=>{
-    const input=event.target;
-    if(!input.dataset.checklistNotes)return;
-    state=update(state,input.dataset.checklistNotes,{notes:input.value});
-    input.closest('details').querySelector('summary').textContent=input.value?'Notes added':'Notes';
+  $('checklistGeneralNotes').addEventListener('input',event=>{
+    state.generalNotes[state.selected]=event.target.value;
     persist();
   });
-  $('checklistGroups').addEventListener('toggle',event=>{
-    const details=event.target;
-    if(!details.matches('.checklist-notes'))return;
-    if(details.open)openNotes.add(details.dataset.item);
-    else openNotes.delete(details.dataset.item);
-  },true);
   $('checklistName').addEventListener('input',event=>{
     state.name=event.target.value;
     state.nameAuto=!state.name.trim();
@@ -182,8 +174,8 @@
   });
   root.EstateChecklist={
     getState:currentState,
-    setState(raw){state=clean(raw);openNotes.clear();render();persist();},
-    startFresh(){state=defaults();openNotes.clear();render();persist();},
+    setState(raw){state=clean(raw);render();persist();},
+    startFresh(){state=defaults();render();persist();},
     getReportData(now){return reportData(currentState(),now,true);}
   };
   render();

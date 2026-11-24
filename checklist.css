@@ -24,12 +24,6 @@
 .checklist-item.done { background: #f4faf7; }
 .checklist-item.done .checklist-item-label { color: #28614d; }
 .checklist-item.na .checklist-item-label { color: #74869d; }
-.checklist-notes { margin: 10px 0 0 31px; }
-.checklist-notes summary { font-size: 12px; color: #6080a9; cursor: pointer; }
-.checklist-notes textarea { box-sizing: border-box; width: 100%; margin-top: 9px; min-height: 74px; resize: vertical; padding: 10px 12px; font: 14px/1.6 var(--sans); color: #244367; border: 1px solid #cbdaf0; border-radius: 4px; background: #fafcff; }
-.checklist-verification { font-size: 12px; line-height: 1.7; color: #776247; background: #fcf8ef; border-left: 2px solid #bfa170; padding: 10px 12px; margin: 12px 0 0 31px; }
-.checklist-verification strong { font-weight: 600; }
-.checklist-verification a { color: #486b99; text-underline-offset: 3px; }
 #checklistSaveStatus { margin: 24px 0; line-height: 1.7; }
 @media(max-width:1000px) {
   .checklist-groups { grid-template-columns: 1fr; }
@@ -46,5 +40,8 @@
   .checklist-item { padding: 17px 18px; }
   .checklist-item-main { gap: 10px; }
   .checklist-item-label { font-size: 13px; gap: 10px; }
-  .checklist-notes, .checklist-verification { margin-left: 29px; }
 }
+
+.checklist-general-notes { margin-top:24px; }
+.checklist-general-notes .field-label { min-height:0; }
+.checklist-general-notes textarea { width:100%; min-height:150px; padding:14px; border:1px solid #cbdaf0; border-radius:5px; background:#fafcff; color:#244367; font:15px/1.7 var(--sans); resize:vertical; box-sizing:border-box; }
